@@ -1,0 +1,23 @@
+
+Start with classical reversible language L1: bools and CCX or perhaps Pi
+
+Define core second quantization language L2:
+
+  e ::= < n , m > | annihilate_0,1 | create_0,1 | e;e
+  t ::= H^n x H^n (model up to n electrons / particles)
+
+  <n,m> == (spin up / false , spin down / true)
+
+Define maps from L1 to L2, one of them is Jordan-Wigner but others too
+
+Write small L1 programs and map them to L2 programs
+
+Write L2 interpreter in Haskell
+
+Also possible to have a version of L2 with no pairs, where false would map to 0 particles and true would map to 1 particle; perhaps include that as well
+
+---
+
+Add superpositions to L2 (perhaps as an arrow layer)
+Add more stuff to L2 as more arrows; measurements ???
+
