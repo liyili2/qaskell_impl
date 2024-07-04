@@ -65,13 +65,35 @@ Inductive exp :=
         | If (e1:exp) (e2:exp) (e3:exp)
         | App (e1:exp) (e2:exp).
 
+Fixpoint subst (e:exp) (x:var) (e1:exp) :=
+  match e with Var y => if x =? y then e1 else Var y
+             | St s t => St s t
+             | Anni s c t tf => Anni s c t tf
+             | Trans ea => Trans (subst ea x e1)
+             | Tensor ea eb => Tensor (subst ea x e1) (subst eb x e1)
+             | Plus ea eb => Plus (subst ea x e1) (subst eb x e1)
+             | Nor ea => Nor (subst ea x e1)
+             | Exp ea => Exp (subst ea x e1)
+             | Log ea => Log (subst ea x e1)
+             | Lambda y t ea => if x =? y then Lambda y t ea else Lambda y t (subst ea x e1)
+             | Mu y t ea => if x =? y then Mu y t ea else Mu y t (subst ea x e1)
+             | If ea eb ec => If (subst ea x e1) (subst eb x e1) (subst ec x e1)
+             | App ea eb => App (subst ea x e1) (subst eb x e1)
+  end.
 
+(*
 Definition anti_s (s:state) (t:type) :=
    match s with Zero => Zero
              | Pair n1 n2 => Pair (t-n1) (t-n2)
    end.
+*)
 
 Inductive sem : exp -> exp -> Prop :=
+  | lambda_rule : forall y t ea eb ,  sem (App (Lambda y t ea) eb) (subst ea y eb)
+  | mu_rule : forall y t ea eb ,  sem (App (Lambda y t ea) eb) (subst ea y eb) 
+
+.
+
     anni_0 : forall s n, sem (App (Anni s) (St Zero n)) (St Zero n)
   | anni_bot_l : forall n t, sem (App (Anni Up) (St (Pair 0 n) t)) (St Zero t)
   | anni_bot_r : forall n t, sem (App (Anni Down) (St (Pair n 0) t)) (St Zero t)
