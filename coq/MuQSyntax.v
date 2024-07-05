@@ -154,6 +154,8 @@ Inductive equiv : exp -> exp -> Prop :=
   | trans_app: forall ea eb, equiv (Trans (App ea eb)) (App (Trans eb) (Trans ea))
   | trans_mul: forall ea y t c, equiv (App ea (Trans (Lambda y t (Mul c (Var y))))) (Mul (Cconj c) ea)
   | trans_nor: forall ea, equiv (Trans (Nor ea)) (Nor (Trans ea))
-  | tensor_app : forall e1 e2 e3 e4, equiv (App (Tensor e1 e2) (Tensor e3 e4)) (Tensor (App e1 e3) (App e2 e4)).
+  | tensor_app : forall e1 e2 e3 e4, equiv (App (Tensor e1 e2) (Tensor e3 e4)) (Tensor (App e1 e3) (App e2 e4))
+  | equiv_self : forall e, equiv e e
+  | equiv_trans: forall e1 e2 e3, equiv e1 e2 -> equiv e2 e3 -> equiv e1 e3.
 
 
