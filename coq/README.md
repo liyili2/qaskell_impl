@@ -40,6 +40,6 @@ Run `make` in the top-level directory to compile our Coq proofs.
 
 * MuQSyntax.v - The MuQ language syntax.
 * MuQSem.v - The MuQ language semantics.
-* MuQType.v - The MuQ Type system Soundness Proof.
-
+* MuQType.v - The MuQ Type system.
+* MuQTypeProof.v - The MuQ Type system Soundness Proof.
 
