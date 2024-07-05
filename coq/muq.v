@@ -3,6 +3,7 @@ Require Import Psatz.
 Require Import QuantumLib.Complex.
 Require Import QuantumLib.Permutations.
 Require Import QuantumLib.VectorStates.
+Require Import Lists.ListSet.
 (*
 Require Import SQIR.
 Require Import VectorStates UnitaryOps Coq.btauto.Btauto Coq.NArith.Nnat Permutation. 
@@ -28,6 +29,8 @@ Definition var := nat.
 
 Definition spinbase : Type := (nat -> nat).
 
+Definition allzero := fun (_:nat) => 0.
+
 Definition basisket : Type := C * spinbase.
 
 Inductive parstate : Type := Sup (m:nat) (s:nat -> basisket) | Zero.
@@ -52,6 +55,8 @@ Coercion QTy : ttype >-> type.
 
 Inductive exp := 
         | Var (x:var)
+        | Val (c:C)
+        | Mul (c:C) (e:exp)
         | St (s:parstate) (t:partype)
         | Anni (s:sigma) (c:C) (t:partype) (tf:typeflag)
         | Trans (e:exp)
@@ -67,7 +72,9 @@ Inductive exp :=
 
 Fixpoint subst (e:exp) (x:var) (e1:exp) :=
   match e with Var y => if x =? y then e1 else Var y
+             | Val c => Val c
              | St s t => St s t
+             | Mul c ea => Mul c (subst ea x e1)
              | Anni s c t tf => Anni s c t tf
              | Trans ea => Trans (subst ea x e1)
              | Tensor ea eb => Tensor (subst ea x e1) (subst eb x e1)
@@ -81,6 +88,47 @@ Fixpoint subst (e:exp) (x:var) (e1:exp) :=
              | App ea eb => App (subst ea x e1) (subst eb x e1)
   end.
 
+Fixpoint list_sub (s:list var) (b:var) :=
+   match s with nil => nil
+              | a::al => if a =? b then list_sub al b else a::list_sub al b
+   end.
+
+Fixpoint freeVars (e:exp) :=
+  match e with Var y => [y]
+             | Val c => []
+             | St s t => []
+             | Anni s c t tf => []
+             | Mul c ea => freeVars ea
+             | Trans ea => freeVars ea
+             | Tensor ea eb => freeVars ea ++ freeVars eb
+             | Plus ea eb =>freeVars ea ++ freeVars eb
+             | Nor ea => freeVars ea
+             | Exp ea => freeVars ea
+             | Log ea => freeVars ea
+             | Lambda y t ea => list_sub (freeVars ea) y
+             | Mu y t ea => list_sub (freeVars ea) y
+             | If ea eb ec => freeVars ea ++ freeVars eb ++ freeVars ec
+             | App ea eb => freeVars ea ++ freeVars eb
+  end.
+
+Fixpoint varCap (e:exp) (x:var) :=
+  match e with Var y => False
+             | Val c => False
+             | St s t => False
+             | Anni s c t tf => False
+             | Mul c ea => varCap ea x
+             | Trans ea => varCap ea x 
+             | Tensor ea eb => varCap ea x \/ varCap eb x 
+             | Plus ea eb => varCap ea x \/ varCap eb x 
+             | Nor ea => varCap ea x 
+             | Exp ea => varCap ea x 
+             | Log ea => varCap ea x 
+             | Lambda y t ea => if x =? y then True else varCap ea x 
+             | Mu y t ea => if x =? y then True else varCap ea x 
+             | If ea eb ec => varCap ea x \/ varCap eb x \/ varCap ec x
+             | App ea eb => varCap ea x \/ varCap eb x 
+  end.
+
 (*
 Definition anti_s (s:state) (t:type) :=
    match s with Zero => Zero
@@ -88,20 +136,75 @@ Definition anti_s (s:state) (t:type) :=
    end.
 *)
 
+Fixpoint cal_dot (s1 s2:spinbase) (n:nat) :=
+  match n with 0 => true
+             | S m => if s1 m =? s2 m then cal_dot s1 s2 m else false
+  end.
+
+Fixpoint cal_inner_aux' (m:nat) (n:nat) (s2:basisket) (s1:nat -> basisket) :=
+   match m with 0 => C0
+              | S j =>  if cal_dot (snd s2) (snd (s1 j)) n
+                        then Cplus (Cmult (fst s2) (fst (s1 j))) (cal_inner_aux' j n s2 s1)
+                        else cal_inner_aux' j n s2 s1
+   end.
+Definition cal_inner_aux (n:nat) (s2:basisket) (s1:parstate) :=
+   match s1 with Sup m p => cal_inner_aux' m n s2 p | Zero => C0 end.
+
+Fixpoint cal_inner' (m:nat) (n:nat) (s1:nat -> basisket) (s2:parstate) :=
+   match m with 0 => C0
+              | S j =>  Cplus (cal_inner_aux n (s1 j) s2) (cal_inner' j n s1 s2)
+   end.
+Definition cal_inner (n:nat) (s1:parstate) (s2:parstate) :=
+   match s1 with Sup m p => cal_inner' m n p s2 | Zero => C0 end.
+
+Fixpoint gen_plus (m:nat) (s:nat -> basisket) (t: partype) := 
+  match m with 0 => (St Zero t)
+             | S j => Plus (St (Sup 1 (fun a => if a =? 0 then s j else (C0, allzero))) t) (gen_plus j s t)
+  end.
+
+Inductive equiv : exp -> exp -> Prop :=
+  | state_sum : forall m s t, 1 < m -> equiv (St (Sup m s) t) (gen_plus m s t)
+  | alpha_1 : forall x y t ea, List.In y (freeVars ea) -> varCap ea y -> equiv (Lambda x t ea) (Lambda y t (subst ea x (Var y)))
+  | alpha_2 : forall x y t ea, List.In y (freeVars ea) -> varCap ea y -> equiv (Mu x t ea) (Mu y t (subst ea x (Var y)))
+  | plus_exb_1: forall ea eb ec, equiv (App (Plus ea eb) ec) (Plus (App ea ec) (App ea ec))
+  | plus_exb_2: forall ea eb ec, equiv (App ec (Plus ea eb)) (Plus (App ec ea) (App ec ea))
+  | plus_tensor_1: forall ea eb ec, equiv (Tensor (Plus ea eb) ec) (Plus (Tensor ea ec) (Tensor ea ec))
+  | plus_tensor_2: forall ea eb ec, equiv (Tensor ec (Plus ea eb)) (Plus (Tensor ec ea) (Tensor ec ea))
+  | trans_tensor: forall ea eb, equiv (Trans (Tensor ea eb)) (Tensor (Trans ea) (Trans eb))
+  | trans_plus: forall ea eb, equiv (Trans (Plus ea eb)) (Plus (Trans ea) (Trans eb))
+  | trans_app: forall ea eb, equiv (Trans (App ea eb)) (App (Trans eb) (Trans ea))
+  | trans_mul: forall ea y t c, equiv (App ea (Trans (Lambda y t (Mul c (Var y))))) (Mul (Cconj c) ea)
+  | trans_nor: forall ea, equiv (Trans (Nor ea)) (Nor (Trans ea))
+  | tensor_app : forall e1 e2 e3 e4, equiv (App (Tensor e1 e2) (Tensor e3 e4)) (Tensor (App e1 e3) (App e2 e4)).
+
+Definition sub_1 (v:nat -> basisket) (j:nat) :=
+   fun a => if a =? 0 then (Cmult (sqrt (INR ((snd (v 0%nat)) j))) (fst (v 0)),update (snd (v 0)) j ((snd (v 0) j) -1)) else v a.
+
+Definition add_1 (v:nat -> basisket) (j:nat) :=
+   fun a => if a =? 0 then (Cmult (sqrt (INR ((snd (v 0%nat) j) + 1))) (fst (v 0)),update (snd (v 0)) j ((snd (v 0) j) + 1)) else v a.
+
+Definition put_join (sa sb: option (list ((nat -> basisket) * partype))) :=
+  match sa with None => None | Some sa' => match sb with None => None | Some sb' => Some (sa' ++ sb') end end.
+
+Inductive resolve_aux : exp -> option (list ((nat -> basisket) * partype)) -> Prop :=
+  | zero_deal : forall t, resolve_aux (St Zero t) None
+  | st_deal : forall v t, resolve_aux (St (Sup 1 v) t) (Some [(v,t)])
+  | tensor_deal: forall ea eb sa sb, resolve_aux ea sa -> resolve_aux eb sb -> resolve_aux (Tensor ea eb) (put_join sa sb).
+
+Inductive resolve : exp -> list (list ((nat -> basisket) * partype)) -> Prop :=
+  | resolve_single: forall e l, resolve_aux e (Some l) -> resolve e ([l])
+  | resolve_plus: forall ea eb la lb, resolve ea la -> resolve eb lb -> resolve (Plus ea eb) (la++lb).
+
 Inductive sem : exp -> exp -> Prop :=
+  | anni_0 : forall j c t tv v t', (snd (v 0)) j = 0 -> sem (App (Anni j c t tv) (St (Sup 1 v) t')) (St Zero t')
+  | anni_n : forall j c t tv v t', (snd (v 0)) j > 0 -> sem (App (Anni j c t tv) (St (Sup 1 v) t')) (St (Sup 1 (sub_1 v j)) t')
+  | crea_0 : forall j c t tv v t', (snd (v 0)) j = (snd t) - 1 -> sem (App (Trans (Anni j c t tv)) (St (Sup 1 v) t')) (St Zero t')
+  | crea_n : forall j c t tv v t', (snd (v 0)) j < (snd t) - 1 
+                 -> sem (App (Trans (Anni j c t tv)) (St (Sup 1 v) t')) (St (Sup 1 (add_1 v j)) t')
   | lambda_rule : forall y t ea eb ,  sem (App (Lambda y t ea) eb) (subst ea y eb)
   | mu_rule : forall y t ea eb ,  sem (App (Lambda y t ea) eb) (subst ea y eb) 
-
-.
-
-    anni_0 : forall s n, sem (App (Anni s) (St Zero n)) (St Zero n)
-  | anni_bot_l : forall n t, sem (App (Anni Up) (St (Pair 0 n) t)) (St Zero t)
-  | anni_bot_r : forall n t, sem (App (Anni Down) (St (Pair n 0) t)) (St Zero t)
-  | anni_l : forall n1 n2 t, 0 < n1 -> sem (App (Anni Up) (St (Pair n1 n2) t)) (St (Pair (n1-1) n2) t)
-  | anni_r : forall n1 n2 t, 0 < n2 -> sem (App (Anni Down) (St (Pair n1 n2) t)) (St (Pair n1 (n2-1)) t)
-  | trans_app: forall e s s' t, sem (App e (St (anti_s s t) t)) (St s' t) 
-                           -> sem (App (Trans e) (St s t)) (St (anti_s s' t) t)
-  | tensor_app: forall e1 e2 e3 e4, sem (App (Tensor e1 e2) (Tensor e3 e4)) (Tensor (App e1 e3) (App e2 e4)).
+  | inner_rule : forall s s' n m m', sem (App (Trans (St s (n,m))) (St s' (n,m'))) (Val (cal_inner n s s'))
+  | nor_rule : forall s, sem (Nor s) (Nor s).
 
 
 
