@@ -33,6 +33,8 @@ Definition allzero := fun (_:nat) => 0.
 
 Definition basisket : Type := C * spinbase.
 
+Definition zerostate := fun (_:nat) => (C0, allzero).
+
 Inductive parstate : Type := Sup (m:nat) (s:nat -> basisket) | Zero.
 
 Definition sigma : Set := nat.
@@ -183,17 +185,43 @@ Definition sub_1 (v:nat -> basisket) (j:nat) :=
 Definition add_1 (v:nat -> basisket) (j:nat) :=
    fun a => if a =? 0 then (Cmult (sqrt (INR ((snd (v 0%nat) j) + 1))) (fst (v 0)),update (snd (v 0)) j ((snd (v 0) j) + 1)) else v a.
 
-Definition put_join (sa sb: option (list ((nat -> basisket) * partype))) :=
-  match sa with None => None | Some sa' => match sb with None => None | Some sb' => Some (sa' ++ sb') end end.
 
-Inductive resolve_aux : exp -> option (list ((nat -> basisket) * partype)) -> Prop :=
-  | zero_deal : forall t, resolve_aux (St Zero t) None
-  | st_deal : forall v t, resolve_aux (St (Sup 1 v) t) (Some [(v,t)])
-  | tensor_deal: forall ea eb sa sb, resolve_aux ea sa -> resolve_aux eb sb -> resolve_aux (Tensor ea eb) (put_join sa sb).
+Definition mut_state (size:nat) (s1 s2: spinbase) :=
+   fun i => if i <? size then s1 i else s2 (i-size).
 
-Inductive resolve : exp -> list (list ((nat -> basisket) * partype)) -> Prop :=
-  | resolve_single: forall e l, resolve_aux e (Some l) -> resolve e ([l])
-  | resolve_plus: forall ea eb la lb, resolve ea la -> resolve eb lb -> resolve (Plus ea eb) (la++lb).
+Fixpoint times_state_aux (i:nat) (size:nat) (m:nat) (lsize:nat) (c:C) (v:spinbase) (s:nat -> basisket) (acc:nat -> basisket) :=
+  match m with 0 => acc
+            | S j => update (times_state_aux i size j lsize c v s acc) (i*size + j) (Cmult c (fst (s j)), mut_state lsize v (snd (s j)))
+  end.
+
+Fixpoint times_state (m:nat) (m':nat) (lsize:nat) (s1 s2: nat -> basisket) :=
+  match m with 0 => zerostate
+           | S j => times_state_aux j m' m' lsize (fst (s1 j)) (snd (s1 j)) s2 (times_state j m' lsize s1 s2)
+  end.
+
+Definition put_join (size:nat) (sa sb: parstate) :=
+  match sa with Zero => Zero
+              | Sup m v =>
+    match sb with Zero => Zero
+                | Sup m' v' => Sup (m*m') (times_state m m' size v v')
+    end
+  end.
+
+Definition put_plus (sa sb: parstate) :=
+  match sa with Zero => Zero
+              | Sup m v =>
+    match sb with Zero => Zero
+                | Sup m' v' => Sup (m+m') (fun i => if i <? m then v i else v' (i - m))
+    end
+  end.
+
+Inductive resolve : exp -> nat * parstate -> Prop :=
+  | zero_deal : forall t, resolve (St Zero t) (fst t, Zero)
+  | st_deal : forall m v t, resolve (St (Sup m v) t) (fst t, Sup m v)
+  | tensor_deal: forall ea eb sa sb, resolve ea sa -> resolve eb sb
+                 -> resolve (Tensor ea eb) (fst sa + fst sb, put_join (fst sa) (snd sa) (snd sb))
+  | resolve_plus: forall ea eb la lb, fst la = fst lb -> resolve ea la -> resolve eb lb
+                 -> resolve (Plus ea eb) (fst la, put_plus (snd la) (snd lb)).
 
 Inductive sem : exp -> exp -> Prop :=
   | anni_0 : forall j c t tv v t', (snd (v 0)) j = 0 -> sem (App (Anni j c t tv) (St (Sup 1 v) t')) (St Zero t')
@@ -204,10 +232,54 @@ Inductive sem : exp -> exp -> Prop :=
   | lambda_rule : forall y t ea eb ,  sem (App (Lambda y t ea) eb) (subst ea y eb)
   | mu_rule : forall y t ea eb ,  sem (App (Lambda y t ea) eb) (subst ea y eb) 
   | inner_rule : forall s s' n m m', sem (App (Trans (St s (n,m))) (St s' (n,m'))) (Val (cal_inner n s s'))
-  | nor_rule : forall s, sem (Nor s) (Nor s).
+  | nor_rule : forall s n st, resolve s (n,st) -> sem (Nor s) (Nor s).
 
+Fixpoint check_base (n:nat) (s:spinbase) (m:nat) :=
+   match n with 0 => True
+              | S j => check_base j s m /\ (s j) < m
+   end.
 
+Fixpoint good_base' (m:nat) (size:nat) (v:nat -> basisket) (n:nat) :=
+  match m with 0 => True
+            | S j => good_base' j size v n /\ check_base size (snd (v j)) n
+  end.
 
+Definition good_base (s:parstate) (n:partype) := 
+  match s with Zero => True
+             | Sup m v => good_base' m (fst n) v (snd n)
+  end.
+
+Inductive merge : type -> type -> type -> Prop :=
+  | merge_st: forall s1 s2, merge (TType s1) (TType s2) (TType (TenType s1 s2))
+  | merge_dot: forall s1 s2, merge (IType s1) (IType s2) (IType (TenType s1 s2))
+  | merge_fun: forall f s1 s2, merge (FType f s1) (FType f s2) (FType f (TenType s1 s2)).
+
+Inductive join : typeflag -> typeflag -> typeflag -> Prop :=
+  | join_same : forall tf, join tf tf tf
+  | join_p1 : forall tf, join P tf P
+  | join_p2 : forall tf, join tf P P.
+
+Inductive typing : (var -> type) -> exp -> type -> Prop :=
+  | tpar : forall g t e1 e2, equiv e1 e2 -> typing g e2 t -> typing g e1 t
+  | tvar : forall g x, typing g (Var x) (g x)
+  | tvec : forall g s t, good_base s t -> typing g (St s t) t
+  | top : forall g j c t tf, j < fst t -> typing g (Anni j c t tf) (FType tf (SType t))
+  | tlambda: forall g y t ea t', typing (update g y t) ea t' -> typing g (Lambda y t ea) t'
+  | tmu : forall g y t ea, typing (update g y (FTy t t)) ea t -> typing g (Mu y t ea) (FTy t t)
+  | tdag : forall g e t, typing g e (TType t) -> typing g (Trans e) (IType t)
+  | ttrans: forall g e tf t, typing g e (FType tf t) -> typing g (Trans e) (FType tf t)
+  | ttensor: forall g e1 e2 t1 t2 t3, typing g e1 t1 -> typing g e2 t2 -> merge t1 t2 t3 -> typing g (Tensor e1 e2) t3
+  | tplus: forall g e1 e2 t, typing g e1 t -> typing g e2 t -> typing g (Plus e1 e2) t
+  | tapp: forall g e1 e2 t1 t2, typing g e1 (FTy t1 t2) -> typing g e2 t1 -> typing g (App e1 e2) t2
+  | tmat: forall g e1 e2 tf t, typing g e1 (FType tf t) -> typing g e2 (TType t) -> typing g (App e1 e2) (TType t)
+  | tinner: forall g e1 e2 t, typing g e1 (IType t) -> typing g e2 (TType t) -> typing g (App e1 e2) CT
+  | tseq: forall g e1 e2 tf1 tf2 tf3 t, typing g e1 (FType tf1 t) -> typing g e2 (FType tf2 t) 
+                                -> join tf1 tf2 tf3 -> typing g (App e1 e2) (FType tf3 t)
+  | tnor1: forall g e t, typing g e (TType t) -> typing g (Nor e) (TType t)
+  | tnor2: forall g e t, typing g e (IType t) -> typing g (Nor e) (IType t)
+  | ther : forall g e t, typing g e (FType P t) -> equiv (Trans e) e -> typing g e (FType H t)
+  | texp : forall g e t, typing g e (FType H t) -> typing g (Exp e) (FType U t)
+  | tlog : forall g e t, typing g e (FType U t) -> typing g (Log e) (FType H t).
 
 
 
