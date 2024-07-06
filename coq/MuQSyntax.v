@@ -10,9 +10,9 @@ Local Open Scope nat_scope.
 
 Definition var := nat.
 
-Definition spinbase : Type := (nat -> nat).
+Definition spinbase : Type := (nat -> nat -> nat).
 
-Definition allzero := fun (_:nat) => 0.
+Definition allzero := fun (_:nat) (_:nat) => 0.
 
 Definition basisket : Type := C * spinbase.
 
@@ -42,7 +42,7 @@ Inductive exp :=
         | Var (x:var)
         | Val (c:C)
         | Mul (c:C) (e:exp)
-        | St (s:parstate) (t:partype)
+        | St (s:parstate) (t:list partype)
         | Anni (s:sigma) (c:C) (t:partype) (tf:typeflag)
         | Trans (e:exp)
         | Tensor (e1:exp) (e2:exp)
@@ -115,31 +115,54 @@ Fixpoint varCap (e:exp) (x:var) :=
              | App ea eb => varCap ea x \/ varCap eb x 
   end.
 
-Fixpoint cal_dot (s1 s2:spinbase) (n:nat) :=
+Fixpoint cal_dot_aux (s1 s2:nat -> nat) (n:nat) :=
   match n with 0 => true
-             | S m => if s1 m =? s2 m then cal_dot s1 s2 m else false
+             | S m => if s1 m =? s2 m then cal_dot_aux s1 s2 m else false
   end.
 
-Fixpoint cal_inner_aux' (m:nat) (n:nat) (s2:basisket) (s1:nat -> basisket) :=
-   match m with 0 => C0
-              | S j =>  if cal_dot (snd s2) (snd (s1 j)) n
-                        then Cplus (Cmult (fst s2) (fst (s1 j))) (cal_inner_aux' j n s2 s1)
-                        else cal_inner_aux' j n s2 s1
-   end.
-Definition cal_inner_aux (n:nat) (s2:basisket) (s1:parstate) :=
-   match s1 with Sup m p => cal_inner_aux' m n s2 p | Zero => C0 end.
+Fixpoint cal_dot (s1 s2:spinbase) (n:nat) (size:nat) :=
+  match n with 0 => true
+             | S m => if cal_dot_aux (s1 m) (s2 m) size then cal_dot s1 s2 m size else false
+  end.
 
-Fixpoint cal_inner' (m:nat) (n:nat) (s1:nat -> basisket) (s2:parstate) :=
+Fixpoint cal_inner_aux' (m:nat) (size n:nat) (s2:basisket) (s1:nat -> basisket) :=
    match m with 0 => C0
-              | S j =>  Cplus (cal_inner_aux n (s1 j) s2) (cal_inner' j n s1 s2)
+              | S j =>  if cal_dot (snd s2) (snd (s1 j)) size n
+                        then Cplus (Cmult (fst s2) (fst (s1 j))) (cal_inner_aux' j size n s2 s1)
+                        else cal_inner_aux' j size n s2 s1
    end.
-Definition cal_inner (n:nat) (s1:parstate) (s2:parstate) :=
-   match s1 with Sup m p => cal_inner' m n p s2 | Zero => C0 end.
+Definition cal_inner_aux (size:nat) (n:nat) (s2:basisket) (s1:parstate) :=
+   match s1 with Sup m p => cal_inner_aux' m size n s2 p | Zero => C0 end.
 
-Fixpoint gen_plus (m:nat) (s:nat -> basisket) (t: partype) := 
+Fixpoint cal_inner' (m:nat) (size n:nat) (s1:nat -> basisket) (s2:parstate) :=
+   match m with 0 => C0
+              | S j =>  Cplus (cal_inner_aux size n (s1 j) s2) (cal_inner' j size n s1 s2)
+   end.
+Definition cal_inner (size n:nat) (s1:parstate) (s2:parstate) :=
+   match s1 with Sup m p => cal_inner' m size n p s2 | Zero => C0 end.
+
+Fixpoint gen_plus (m:nat) (s:nat -> basisket) (t: list partype) := 
   match m with 0 => (St Zero t)
              | S j => Plus (St (Sup 1 (fun a => if a =? 0 then s j else (C0, allzero))) t) (gen_plus j s t)
   end.
+
+Parameter I : exp.
+
+Parameter find_n : exp -> nat.
+
+Fixpoint eton (n:nat) (e:exp) :=
+   match n with 0 => I
+             | S m => App e (eton m e)
+   end.
+Fixpoint pow_exp (n:nat) (e:exp) :=
+   match n with 0 => I
+              | S m => Plus (Mul (Cdiv (Copp Ci) (INR (fact(m)))) (eton m e)) (pow_exp m e)
+   end.
+
+Fixpoint pow_log (n:nat) (e:exp) :=
+   match n with 0 => Plus e (Mul (Copp C1) I)
+              | S m => Plus (Mul (Cdiv (Copp C1) (INR n)) (eton n (Plus I (Mul (Copp C1) e)))) (pow_log m e)
+   end.
 
 Inductive equiv : exp -> exp -> Prop :=
   | state_sum : forall m s t, 1 < m -> equiv (St (Sup m s) t) (gen_plus m s t)
@@ -155,6 +178,8 @@ Inductive equiv : exp -> exp -> Prop :=
   | trans_mul: forall ea y t c, equiv (App ea (Trans (Lambda y t (Mul c (Var y))))) (Mul (Cconj c) ea)
   | trans_nor: forall ea, equiv (Trans (Nor ea)) (Nor (Trans ea))
   | tensor_app : forall e1 e2 e3 e4, equiv (App (Tensor e1 e2) (Tensor e3 e4)) (Tensor (App e1 e3) (App e2 e4))
+  | exp_appx: forall e, equiv (Exp e) (pow_exp (find_n e) e)
+  | log_appx: forall e, equiv (Log e) (pow_log (find_n e) e)
   | equiv_self : forall e, equiv e e
   | equiv_trans: forall e1 e2 e3, equiv e1 e2 -> equiv e2 e3 -> equiv e1 e3.
 
