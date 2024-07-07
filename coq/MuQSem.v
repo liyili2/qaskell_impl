@@ -56,12 +56,12 @@ Fixpoint cal_dot_aux (s1 s2:nat -> nat) (n:nat) :=
              | S m => if s1 m =? s2 m then cal_dot_aux s1 s2 m else false
   end.
 
-Fixpoint cal_dot (s1 s2:spinbase) (nl:list (nat * nat)) :=
+Fixpoint cal_dot (s1 s2:spinbase) (nl:list partype) :=
   match nl with [] => true
              | ((n,m)::ml) => if cal_dot_aux (s1 (length ml)) (s2 (length ml)) n then cal_dot s1 s2 ml else false
   end.
 
-Fixpoint cal_inner_aux' (m:nat) (nl: list (nat*nat)) (s2:basisket) (s1:nat -> basisket) :=
+Fixpoint cal_inner_aux' (m:nat) (nl: list partype ) (s2:basisket) (s1:nat -> basisket) :=
    match m with 0 => C0
               | S j =>  if cal_dot (snd s2) (snd (s1 j)) nl
                         then Cplus (Cmult (fst s2) (fst (s1 j))) (cal_inner_aux' j nl s2 s1)
@@ -70,11 +70,11 @@ Fixpoint cal_inner_aux' (m:nat) (nl: list (nat*nat)) (s2:basisket) (s1:nat -> ba
 Definition cal_inner_aux (nl:list (nat*nat)) (s2:basisket) (s1:parstate) :=
    match s1 with Sup m p => cal_inner_aux' m nl s2 p | Zero => C0 end.
 
-Fixpoint cal_inner' (m:nat) (nl:list (nat * nat)) (s1:nat -> basisket) (s2:parstate) :=
+Fixpoint cal_inner' (m:nat) (nl:list partype) (s1:nat -> basisket) (s2:parstate) :=
    match m with 0 => C0
               | S j =>  Cplus (cal_inner_aux nl (s1 j) s2) (cal_inner' j nl s1 s2)
    end.
-Definition cal_inner (nl:list (nat * nat)) (s1:parstate) (s2:parstate) :=
+Definition cal_inner (nl:list partype) (s1:parstate) (s2:parstate) :=
    match s1 with Sup m p => cal_inner' m nl p s2 | Zero => C0 end.
 
 (*

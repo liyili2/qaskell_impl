@@ -14,19 +14,24 @@ Local Open Scope nat_scope.
    H refers to a Hermitian matrix where its transpose is the same as the matrix.
    U is the unitary, taking the exponent of the Hermitian matrix. *)
 
-Fixpoint check_base (n:nat) (s:spinbase) (m:nat) :=
+Fixpoint check_base_aux (n:nat) (s:spinbase) (i:nat) (m:nat) :=
    match n with 0 => True
-              | S j => check_base j s m /\ (s j) < m
+              | S j => check_base_aux j s i m /\ (s i j) < m
    end.
 
-Fixpoint good_base' (m:nat) (size:nat) (v:nat -> basisket) (n:nat) :=
+Fixpoint check_base (s:spinbase) (nl:list partype) :=
+   match nl with [] => True
+              | ((n,m)::ml) => check_base_aux n s (length ml) m /\ check_base s ml
+   end.
+
+Fixpoint good_base' (m:nat) (v:nat -> basisket) (nl: list partype) :=
   match m with 0 => True
-            | S j => good_base' j size v n /\ check_base size (snd (v j)) n
+            | S j => good_base' j v nl /\ check_base (snd (v j)) nl
   end.
 
-Definition good_base (s:parstate) (n:partype) := 
+Definition good_base (s:parstate) (nl:list partype) := 
   match s with Zero => True
-             | Sup m v => good_base' m (fst n) v (snd n)
+             | Sup m v => good_base' m v nl
   end.
 
 Inductive merge : type -> type -> type -> Prop :=
@@ -39,10 +44,16 @@ Inductive join : typeflag -> typeflag -> typeflag -> Prop :=
   | join_p1 : forall tf, join P tf P
   | join_p2 : forall tf, join tf P P.
 
+Fixpoint toTensor (l:list partype) :=
+  match l with [] => None
+             | a::ml => match toTensor (ml) with None => Some (SType a) | Some t => Some (TenType (SType a) t) end
+  end.
+
 Inductive typing : (var -> type) -> exp -> type -> Prop :=
   | tpar : forall g t e1 e2, equiv e1 e2 -> typing g e2 t -> typing g e1 t
   | tvar : forall g x, typing g (Var x) (g x)
-  | tvec : forall g s t, good_base s t -> typing g (St s t) t
+  | tval : forall g c, typing g (Val c) CT
+  | tvec : forall g s t t', good_base s t -> toTensor t = Some t' -> typing g (St s t) t'
   | top : forall g j c t tf, j < fst t -> typing g (Anni j c t tf) (FType tf (SType t))
   | tlambda: forall g y t ea t', typing (update g y t) ea t' -> typing g (Lambda y t ea) t'
   | tmu : forall g y t ea, typing (update g y (FTy t t)) ea t -> typing g (Mu y t ea) (FTy t t)
