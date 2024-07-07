@@ -115,32 +115,6 @@ Fixpoint varCap (e:exp) (x:var) :=
              | App ea eb => varCap ea x \/ varCap eb x 
   end.
 
-Fixpoint cal_dot_aux (s1 s2:nat -> nat) (n:nat) :=
-  match n with 0 => true
-             | S m => if s1 m =? s2 m then cal_dot_aux s1 s2 m else false
-  end.
-
-Fixpoint cal_dot (s1 s2:spinbase) (n:nat) (size:nat) :=
-  match n with 0 => true
-             | S m => if cal_dot_aux (s1 m) (s2 m) size then cal_dot s1 s2 m size else false
-  end.
-
-Fixpoint cal_inner_aux' (m:nat) (size n:nat) (s2:basisket) (s1:nat -> basisket) :=
-   match m with 0 => C0
-              | S j =>  if cal_dot (snd s2) (snd (s1 j)) size n
-                        then Cplus (Cmult (fst s2) (fst (s1 j))) (cal_inner_aux' j size n s2 s1)
-                        else cal_inner_aux' j size n s2 s1
-   end.
-Definition cal_inner_aux (size:nat) (n:nat) (s2:basisket) (s1:parstate) :=
-   match s1 with Sup m p => cal_inner_aux' m size n s2 p | Zero => C0 end.
-
-Fixpoint cal_inner' (m:nat) (size n:nat) (s1:nat -> basisket) (s2:parstate) :=
-   match m with 0 => C0
-              | S j =>  Cplus (cal_inner_aux size n (s1 j) s2) (cal_inner' j size n s1 s2)
-   end.
-Definition cal_inner (size n:nat) (s1:parstate) (s2:parstate) :=
-   match s1 with Sup m p => cal_inner' m size n p s2 | Zero => C0 end.
-
 Fixpoint gen_plus (m:nat) (s:nat -> basisket) (t: list partype) := 
   match m with 0 => (St Zero t)
              | S j => Plus (St (Sup 1 (fun a => if a =? 0 then s j else (C0, allzero))) t) (gen_plus j s t)
