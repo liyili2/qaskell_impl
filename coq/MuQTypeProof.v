@@ -38,7 +38,7 @@ Theorem type_progress: forall g e1 t, typing g e1 t -> value e1 \/ exists e2 e3,
 Proof.
   intros.
   generalize dependent t.
-  generalize dependent tenv.
+  generalize dependent g.
   induction H1; simpl in *; intros.
  - apply env_equiv_state_eq with (rmax := rmax) (s := s0) in H0 as X1; try easy.
   destruct X1 as [s1 [X1 X2]].
@@ -301,7 +301,7 @@ Qed.
 
 Theorem type_preservation_1: forall g e1 e2 t, typing g e1 t -> equiv e1 e2 -> exists g', typing g' e2 t.
 Proof.
-  intros. generalize dependent s1. generalize dependent s2. generalize dependent s.
+  intros. generalize dependent t. generalize dependent g. generalize dependent e2.
   generalize dependent W.
   induction H1; intros;simpl in *; subst; try easy.
 - apply env_state_eq_app in H0 as X1; try easy.
@@ -451,7 +451,7 @@ Qed.
 
 Theorem type_preservation_2: forall g e1 e2 t, typing g e1 t -> sem e1 e2 -> exists g', typing g' e2 t.
 Proof.
-  intros. generalize dependent s. generalize dependent s'.
+  intros. generalize dependent g. generalize dependent t.
   induction H; intros;simpl in *; subst.
  -
   destruct s0; simpl in *.
