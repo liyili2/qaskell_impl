@@ -2,33 +2,102 @@ module Main (main) where
 
 import Lib
 
+
 main :: IO ()
 main = someFunc
 
-data State = Pair Int Int | Zero deriving (Show)
+type State = [Int]
 
-data Sigma = Up | Down deriving (Show)
+type Sigma = Int
 
-type Type = Int
+type Type = (Int , Int)
 
-data Exp = St State Type
-	| Anni Sigma
-	| Trans Exp
+data Op = Anni | Crea
+	deriving (Show)
+
+data Exp = I
+        | Hold State
+	| Single Op Sigma Type
+	| Plus Exp Exp
 	| Tensor Exp Exp
-	| App Exp Exp deriving (Show)
+	| App Exp Exp
+	deriving (Show)
 	
-anti_s :: State -> Type -> State
-anti_s Zero _ = Zero
-anti_s (Pair n1 n2) t = Pair (t - n1) (t - n2)
+data Con = Var String
+        | Val [[Int]]
+	| Let String Exp Con
+	| Sum Con Con
+	| Times Int Con
+	deriving (Show)
+	
+--anti_s :: State -> Type -> State
+--anti_s Zero _ = Zero
+--anti_s (Pair n1 n2) t = Pair (t - n1) (t - n2)
 
-sem :: Exp -> Exp -> Bool
-sem (App (Anni s) (St Zero n)) (St Zero n) = True 								-- anni_0
-sem (App (Anni Up) (St (Pair 0 n) t)) (St Zero t) = True 						-- anni_bot_l
-sem (App (Anni Down) (St (Pair n 0) t)) (St Zero t) = True						-- anni_bot_r
-sem (App (Anni Up) (St (Pair n1 n2) t)) (St (Pair (n1 - 1) n2) t)				-- anni_l
-	| n1 > 0 = True
-sem (App (Anni Down) (St (Pair n1 n2) t)) (St (Pair n1 (n2 - 1) t)				-- anni_r
-	| n2 > 0 = True
-sem (App e (St (anti_s s t) t)) (St s' t)										-- trans_app
-	| sem (App (Trans e) (St s t)) (St (anti_s s' t) t) = True
-sem (App (Tensor e1 e2) (Tensor e3 e4)) (Tensor (App e1 e3) (App e2 e4)) = True	-- tensor_app
+gen_tensor :: Int -> Exp
+gen_tensor 0 = I
+gen_tensor n =  Tensor (gen_tensor (n - 1)) I
+
+gen_list 0 = []
+gen_list n = 0:(gen_list (n-1))
+
+setAt i v l = (take i l) ++ (v:(drop (i+1) l))
+
+gen_num :: Op -> Int -> State -> Exp
+gen_num Anni s l = Hold l
+gen_num Crea s l = Hold (setAt s 1 l)
+
+equiv :: Exp -> Exp
+equiv (App I I) = I
+equiv (App (Plus e1 e2) e) = Plus (App e1 e) (App e2 e)
+equiv (App (Tensor e1 e2) (Tensor e3 e4)) = Tensor (App e1 e3) (App e2 e4)
+equiv (App (Single op s t) I) = Tensor (gen_tensor s) (Tensor (gen_num op s (gen_list (fst t))) (gen_tensor (fst t - s - 1))) 
+
+interInt [1,0] = -1
+interInt [0,1] = 1
+interInt [0] = 0
+interInt [1] = 1
+
+interAux (Hold l) = [interInt l]
+interAux (Tensor e1 e2) = interAux e1 ++ interAux e2
+
+inter :: Exp -> [[Int]]
+inter (Hold l) = [l]
+inter (Tensor e1 e2) = [interAux (Tensor e1 e2)]
+inter (Plus e1 e2) = inter e1 ++ inter e2
+
+subst (Var x) y e = if x == y then Val e else (Var x)
+subst (Val v) y e = Val v
+subst (Let x e v) y ea = if x == y then Let x e v else Let x e (subst v y ea)
+subst (Sum e1 e2) y ea = Sum (subst e1 y ea) (subst e2 y ea)
+subst (Times e1 e2) y ea = Times e1 (subst e2 y ea)
+
+listAddAux [] [] = []
+listAddAux (v1:vl) (x1:xl) = (v1+x1):(listAddAux vl xl)
+
+listAddA :: [Int] -> [[Int]] -> [[Int]]
+listAddA v [] = []
+listAddA v (x1:xl) = (listAddAux v x1) : listAddA v xl
+
+listAdd :: [[Int]] -> [[Int]] -> [[Int]]
+listAdd [] vl = []
+listAdd (v1:vl) xl = listAddA v1 xl ++ listAdd vl xl
+
+
+listTimesAux v [] = []
+listTimesAux v (x:xl) = v * x : listTimesAux v xl
+
+listTimes :: Int -> [[Int]] -> [[Int]]
+listTimes v [] = []
+listTimes v (x:xl) = (listTimesAux v x):(listTimes v xl)
+
+
+dealC (Let x v c) = dealC (subst c x (inter (equiv v)))
+dealC (Val xl) = xl
+dealC (Sum e1 e2) = let v1 = dealC e1 in let v2 = dealC e2 in listAdd v1 v2
+dealC (Times a e) = let v = dealC e in listTimes a v
+
+
+
+
+
