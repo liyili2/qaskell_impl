@@ -27,274 +27,75 @@ Definition value (e:exp) :=
              | Val c => True
              | St s t => True
              | Trans (St s t) => True
+             | Trans (Var x) => True
              | Lambda x t e => True
              | Mu x t e => True
-             | t => isMatrix e
+             | _ => isMatrix e
   end.
 
 
+
+Lemma tval_ct : forall e g c t , typing g e t -> e = Val c -> t = CT.
+Proof.
+  intros. induction H; simpl in *; try easy. subst.
+  apply tval_eq with (c := c) in H; try easy. apply IHtyping; try easy.
+  apply IHtyping in H0. easy.
+Qed.
+
+Lemma tvalue_eq: forall e g t, typing g e (TType t) -> value e
+               -> exists e1, equiv (Trans e) e1 /\ value e1.
+Proof.
+  induction e; intros; simpl in *.
+  exists (Trans (Var x)). split. apply equiv_self. easy.
+  apply tval_ct with (c := c) in H; try easy.
+  easy.
+  exists (Trans (St s t)).
+  split. apply equiv_self. easy.
+  exists (Trans (Anni s c t tf)).
+  split. apply equiv_self. easy.
+Admitted.
+
+
+
 (* The type progress theorem. For every well-typed expression, there exists a step. *)
-Theorem type_progress: forall g e1 t, typing g e1 t -> value e1 \/ exists e2 e3, equiv e1 e2 /\ sem e2 e3.
+Theorem type_progress: forall g e1 t, typing g e1 t 
+   -> value e1 \/ exists e2, equiv e1 e2 /\ (value e2 \/ exists e3, sem e2 e3).
 Proof.
   intros.
-  generalize dependent t.
-  generalize dependent g.
-  induction H1; simpl in *; intros.
- - apply env_equiv_state_eq with (rmax := rmax) (s := s0) in H0 as X1; try easy.
-  destruct X1 as [s1 [X1 X2]].
-  apply state_equiv_qstate_wt in X1 as X3; try easy.
-  apply env_equiv_simple in H0 as X4; try easy.
-  assert (env_equiv T T) by constructor.
-  destruct (IHlocus_system H2 T H6 X4 s1 X2 X3) as [sa [sb [r [e' [Y1 [Y2 [Y3 Y4]]]]]]].
-  exists sa,sb,r,e'. split. eapply state_trans. apply X1. easy.
-  split. easy. split. easy. easy.
- - apply env_equiv_app in H0 as X1. destruct X1 as [Ta [Tb [X1 [X2 X3]]]]; subst.
-  apply env_state_eq_app in H as X1; try easy.
-  destruct X1 as [s1 [s2 [X4 [X5 X6]]]]; subst.
-  apply env_state_eq_same_length in X4; try easy.
-  destruct X4. apply simple_tenv_app_l in H4 as X4.
-  apply qstate_wt_app_l in H3 as X7.
-  destruct (IHlocus_system H2 Ta X2 X4 s1 H5 X7) as [sa [s' [r [ea [Y2 [Y3 [Y4 Y5]]]]]]].
-  apply simple_tenv_app_r in H4; try easy.
-  apply env_equiv_state_eq with (rmax := rmax) (T1 := T1) in H6 as X8; try easy.
-  destruct X8 as [s2a [X8 X9]].
-  exists (sa++s2a),(s'++s2a),r,ea. split.
-  apply state_equiv_app; try easy.
-  split.
-  apply env_state_eq_app_join; try easy.
-  split.
-  apply step_sem_local; try easy.
-  apply qstate_wt_app; try easy.
-  eapply state_equiv_qstate_wt. apply X8.
-  apply qstate_wt_app_r in H3. easy.
- - 
-  apply env_equiv_empty_r in H0. subst.
-  inv H. exists nil,nil,(R1),PSKIP; try easy. split. constructor.
-  split. constructor. split. constructor. easy.
- -
-  assert (freeVarsNotCAExp env a).
-  unfold freeVarsNotCPExp,freeVarsNotCAExp in *.
-  intros. eapply H2. simpl. apply in_app_iff. left. apply H7. easy.
-  apply freeVarsAExpSimple in H7; try easy. destruct H7 as [v H7]; subst.
-  apply env_equiv_state_eq with (rmax := rmax) (s := s) in H3 as X1.
-  destruct X1 as [sa [X1 X2]].
-  exists sa,sa,R1,(subst_pexp e x v). split; try easy.
-  split; try easy. split. constructor. easy.
-  eapply state_equiv_qstate_wt. apply X1. 1-3: easy.
- -
-  apply env_equiv_state_eq with (rmax := rmax) (s := s) in H3 as X1; try easy.
-  destruct X1 as [sa [X1 X2]]. exists sa.
-  inv X2. inv H12.
-  apply state_equiv_qstate_wt in X1 as X2.
-  destruct (@pick_mea_exists rmax l2 (l) m bl y n X2) as [ra [va X3]].
-  apply mask_state_exists in X3 as eq1.
-  destruct eq1 as [na [p [X4 X5]]].
-  exists ((l, (Cval na p)) :: l2),ra,(subst_pexp e x va).
-  split. easy. split. constructor; try easy. constructor.
-  split. apply let_step_q; try easy.
-  unfold qstate_wt in *. intros.
-  simpl in *. destruct H7. inv H7. lia.
-  eapply X2. right. apply H7. easy.
- -
-  apply env_equiv_state_eq with (rmax := rmax) (s := s) in H1 as X1; try easy.
-  destruct X1 as [sa [X1 X2]].
-  inv X2. inv H11. inv H10.
-  apply state_equiv_qstate_wt in X1 as X2; try easy.
-  apply env_equiv_simple in H1 as X3; try easy.
-  assert (simple_ses (l)).
-  unfold simple_tenv in *. eapply X3. simpl. left. easy.
-  Check eval_nor_exists.
-  destruct (@eval_nor_exists rmax env l n p r e H H6 H0) as [ba X4]. destruct ba.
-  exists ([(l, Nval p r)]), ((l,Nval c r0)::nil),R1,PSKIP.
-  split. easy. split. constructor. 1-2:constructor.
-  split. apply appu_step_nor; try easy.
-  unfold qstate_wt in *.
-  intros. simpl in *. destruct H7; try easy.
- -
-  apply env_equiv_state_eq with (rmax := rmax) (s := s) in H1 as X1; try easy.
-  destruct X1 as [sa [X1 X2]].
-  inv X2. inv H11. inv H10.
-  apply state_equiv_qstate_wt in X1 as X2; try easy.
-  apply env_equiv_simple in H1 as X3; try easy.
-  assert (simple_ses (l++l')).
-  unfold simple_tenv in *. intros.
-  eapply X3. simpl. left. easy.
-  apply simple_ses_app_l in H6 as X4.
-  destruct (@eval_ch_exists rmax m env l n bl e H X4 H0) as [ba X5].
-  exists ([(l ++ l', Cval m bl)]), ((l ++ l', Cval m ba) :: nil),R1,PSKIP.
-  split. easy. split. constructor. 1-2:constructor.
-  split. apply appu_step_ch; try easy. 
-  unfold qstate_wt in *.
-  intros. simpl in *.
-  destruct H7; try easy. inv H7.
-  eapply X2. left. easy.
- - 
-  apply env_equiv_state_eq with (rmax := rmax) (s := s) in H1 as X1; try easy.
-  destruct X1 as [sa [X1 X2]].
-  inv X2. inv H11. inv H10.
-  apply state_equiv_qstate_wt in X1 as X2; try easy.
-  apply env_equiv_simple in H1 as X3; try easy.
-  assert (simple_ses ([a])) as X4.
-  unfold simple_tenv in *. eapply X3. simpl. left. easy.
-  exists ([([a], Nval p0 r)]),
-     (([a],(Hval (fun i => (update allfalse 0 (r i)))) )::nil),R1,PSKIP.
-  split. easy. split. constructor. 1-2: constructor.
-  split. apply appsu_step_h_nor; try easy.
-  unfold qstate_wt in *.
-  intros. inv H6; try easy.
- -
-  apply env_equiv_state_eq with (rmax := rmax) (s := s) in H1 as X1; try easy.
-  destruct X1 as [sa [X1 X2]].
-  inv X2. inv H11. inv H10.
-  apply state_equiv_qstate_wt in X1 as X2; try easy.
-  apply env_equiv_simple in H1 as X3; try easy.
-  assert (simple_ses ([a])) as X4.
-  unfold simple_tenv in *. eapply X3. simpl. left. easy.
-  exists ([([a], Hval bl)]),(([a],(Nval C1 (fun j => bl j 0)))::nil),R1,PSKIP.
-  split. easy. split. constructor. 1-2:constructor.
-  split. apply appsu_step_h_had; try easy.
-  unfold qstate_wt in *.
-  intros. simpl in *. destruct H6; try easy.
- -
-  apply env_equiv_state_eq with (rmax := rmax) (s := s) in H1 as X1; try easy.
-  destruct X1 as [sa [X1 X2]].
-  inv X2. inv H11. inv H10.
-  apply state_equiv_qstate_wt in X1 as X2; try easy.
-  apply env_equiv_simple in H1 as X3; try easy.
-  assert (simple_ses ([a]++l)).
-  unfold simple_tenv in *. intros.
-  eapply X3. simpl. left. easy.
-  apply simple_ses_app_l in H6 as X4.
-  exists ([(a :: l, Cval m0 bl)]), (([a]++l,Cval (m0*2^m) (eval_h_ch m m0 bl)) :: nil),R1,PSKIP.
-  split. easy. split. constructor. 1-2:constructor.
-  replace (a :: l) with ([a]++l) by easy.
-  split. apply appsu_step_h_ch; try easy.
-  eapply type_vari_ses_len. apply H. 
-  unfold qstate_wt in *.
-  intros. simpl in *.
-  destruct H7; try easy. inv H7.
-  assert ((a :: l, Cval m0 bl) = (a :: l, Cval m0 bl) \/ False ).
-  left. easy. apply X2 in H7.
-  Check Nat.pow_gt_1.
-  assert (2 <> 0) by lia.
-  specialize (Nat.pow_nonzero 2 m H8) as A1.
-  lia.
- -
-  assert (freeVarsNotCBExp env b).
-  unfold freeVarsNotCPExp,freeVarsNotCBExp in *.
-  intros. eapply H2; simpl in *. apply in_app_iff. left. apply H6. easy.
-  apply freeVarsBExpSimple in H6; try easy. destruct H6.
-  apply env_equiv_state_eq with (rmax := rmax) (s := s) in H0 as X1; try easy.
-  destruct X1 as [sa [X1 X2]].
-  destruct x.
-  exists sa,sa,R1,e. split. easy.
-  split. easy. split. apply if_step_ct; try easy.
-  eapply state_equiv_qstate_wt. apply X1. easy.
-  exists sa,sa,R1,PSKIP. split. easy.
-  split. easy. split. apply if_step_cf; try easy.
-  eapply state_equiv_qstate_wt. apply X1. easy.
- -
-  apply env_equiv_state_eq with (rmax := rmax) (s := s) in H0 as X1; try easy.
-  destruct X1 as [sa [X1 X2]].
-  inv X2. inv H11. inv H10.
-  apply state_equiv_qstate_wt in X1 as X2; try easy.
-  apply env_equiv_simple in H0 as X3; try easy.
-  assert (btest_or b \/ ~ btest_or b).
-  destruct b; try easy. 1-3:right; easy. left; easy. right; easy.
-  destruct H6. destruct b; try easy.
-  assert (simple_ses (l++l1)) as X4.
-  unfold simple_tenv in X3. eapply X3. simpl. left. easy.
-  inv H.
-  apply simple_ses_app_r in X4 as X5.
-  apply ses_len_simple in X5 as X6. destruct X6 as [n' X6].
-  specialize (fch_mut_state 0 1 n'
-           (fst (grab_bool bl m 1)) (snd (grab_bool bl m 1))) as X7.
-  assert (freeVarsNotCPExp env e).
-  unfold freeVarsNotCPExp in *. intros; simpl in *.
-  eapply H2. right. apply H. easy.
-  assert (simple_tenv ((l1, CH) :: nil)).
-  unfold simple_tenv in *. intros. simpl in *. destruct H7; try easy. inv H7.
-  easy.
-  assert (env_state_eq ([(l1, CH)])
-                   ([(l1,
-                    Cval (fst (grab_bool bl m 1))
-                      (mut_fch_state 0 1 n'
-                         (snd (grab_bool bl m 1))))])).
-  repeat constructor.
-  assert (qstate_wt
-                   ([(l1,
-                    Cval (fst (grab_bool bl m 1))
-                      (mut_fch_state 0 1 n'
-                         (snd (grab_bool bl m 1))))])).
-  unfold qstate_wt in *.
-  intros. simpl in *. destruct H9; try easy. inv H9.
-  apply grab_bool_gt. eapply X2. left. easy. lia.
-  assert (env_equiv ([(l1, CH)]) ([(l1, CH)])). constructor.
-  destruct (IHlocus_system H ([(l1, CH)]) H10 H7 ((l1,(Cval (fst (grab_bool bl m 1))
-    (mut_fch_state 0 1 n' (snd (grab_bool bl m 1)))))::nil) H8 H9) 
-              as [sa [sa' [ra [ea [Y1 [Y2 [Y3 Y4]]]]]]].
-  apply qm_step_prob_1 with (T := [(l1, CH)]) (T' := [(l1, CH)]) in Y3 as Y5; try easy; subst.
-  apply simple_env_same_state with (l := l1) in Y3 as Y5; try easy.
-  inv Y5. inv H18. inv H17.
-  destruct (assem_bool_exists 1 n' m m0 bl bl0) as [mv [fv Y6]].
-  inv Y2. inv H18. inv H17.
-  apply state_equiv_single_eq in Y1 as Y7. inv Y7.
-  exists ([([(i, BNum v, BNum (S v))] ++ l1, Cval m bl)]),
-      (((i,BNum v,BNum (S v))::l1, (Cval mv fv))::nil),R1,(If (BTest i v) ea).
-  split. easy. split. constructor. 1-2: constructor.
-  apply simple_env_same_state with (l := l1) in Y3 as Y5; try easy.
-  split. apply if_sem_q with (n := n') (fc := Cval (fst (grab_bool bl m 1))
-     (mut_fch_state 0 1 n' (snd (grab_bool bl m 1)))) (fc' := (Cval m0 bl0)); try easy.
-  unfold qstate_wt in *. intros; simpl in *. 
-  destruct H12; try easy. inv H12.
-  assert (((i, BNum v, BNum (S v)) :: l1, Cval m bl)
-    = ((i, BNum v, BNum (S v)) :: l1, Cval m bl) \/ False).
-  left. easy. apply X2 in H12.
-  apply assem_bool_gt in Y6 as X10; try easy. lia.
-  apply eval_bexp_exists with (s := nil) (l1 := l1) (m := m) (f := bl) in H as X10.
-  destruct X10 as [f' X10].
-  assert (exists b', get_core_bexp b = Some b').
-  inv X10; try easy; simpl in *.
-  1-4:exists (BTest z i); easy.
-  destruct H7 as [b' Y2].
-  exists ([(l ++ l1, Cval m bl)]), ((l++l1,Cval m f')::nil),R1,(If b' e).
-  split. easy. split. constructor. 1-2:constructor.
-  split. apply if_sem_side with (n0 := n); try easy.
-  unfold qstate_wt in *.
-  intros. simpl in *. destruct H7; try easy. inv H7. eapply X2. left. easy.
-- 
-  apply env_equiv_state_eq with (rmax := rmax) (s := s) in H0 as X1; try easy.
-  destruct X1 as [sa [X1 X2]].
-  apply state_equiv_qstate_wt in X1 as X3; try easy.
-  apply env_equiv_simple in H0 as X4; try easy.
-  assert (e1 = PSKIP \/ ~ e1 = PSKIP).
-  destruct e1; try easy. left; try easy.
-  1-7:right; easy. destruct H1; subst.
-  exists sa,sa, R1, e2.
-  split. easy. split. easy.
-  split. apply seq_step_2. easy.
-  assert (freeVarsNotCPExp env e1).
-  unfold freeVarsNotCPExp in *. intros; simpl in *.
-  eapply H2. apply in_app_iff. left. apply H5.
-  easy.
-  assert (env_equiv T T) by constructor.
-  destruct (IHlocus_system1 H5 T H6 X4 sa X2 X3) as [sa1 [s' [r [e' [Y1 [Y2 [Y3 Y4]]]]]]].
-  exists sa1,s',r,(PSeq e' e2).
-  split. eapply state_trans. apply X1. easy. split. easy.
-  split. apply seq_step_1. easy. easy.
--
-  apply env_equiv_state_eq with (rmax := rmax) (s := s) in H0 as X1; try easy.
-  destruct X1 as [sa [X1 X2]].
-  apply state_equiv_qstate_wt in X1 as X3; try easy.
-  exists sa,sa,R1,PSKIP. split. easy. split. easy.
-  split. constructor. lia. easy.
-- apply env_equiv_state_eq with (rmax := rmax) (s := s) in H4 as X1; try easy.
-  destruct X1 as [sa [X1 X2]].
-  apply state_equiv_qstate_wt in X1 as X3; try easy.
-  exists sa,sa,R1,(PSeq (If (subst_bexp b i l) (subst_pexp e i l)) (For i (Num (S l)) (Num h) b e)).
-  split. easy. split. easy.
-  split. apply for_step_s. easy. easy.
-Qed.
+  induction H; intros.
+ - simpl in *; destruct IHtyping.
+   right. exists e2. split; try easy.
+   left. easy.
+   destruct H1 as [e3 [X1 X2]]. destruct X2.
+   right. exists e3. split. eapply equiv_trans. apply H. easy.
+   left. easy. right. destruct H1.
+   exists e3. split. eapply equiv_trans. apply H. easy.
+   right. exists x. easy.
+ - left. easy.
+ - left. easy.
+ - left. easy.
+ - left. easy.
+ - left. easy.
+ - left. easy.
+ - destruct IHtyping.
+   apply tvalue_eq in H; try easy.
+   destruct H as [e1 [X1 X2]]. right.
+   exists e1. split. easy. left. easy.
+   destruct H0 as [e1 [X1 X2]].
+   destruct X2.
+   apply tpar with (g := g) (t := t) in X1 as X2; try easy; try easy.
+   
+ exists (St s t). split. apply equiv_self.
+   left; easy.
+ - exists (Anni j c t tf). split. apply equiv_self.
+   left; easy.
+ - exists (Lambda y t ea). split. apply equiv_self.
+   left; easy.
+ - exists (Mu y t ea). split. apply equiv_self.
+   left; easy.
+ - destruct IHtyping as [e1 [X1 X2]].
+   destruct X2.
+Admitted.
 
 (* The following two theorems are the type preservation theorems. One for the type preservation in equivalence,
    and the other for type preservation for semantic reductions. *)
@@ -686,4 +487,3 @@ Proof.
   apply AEnvFacts.Equal_trans with (m' := fst s'0); try easy.
   replace ((l + na + 1)) with (l + S na) in * by lia. easy.
 Qed.
-

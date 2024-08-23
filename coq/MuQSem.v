@@ -15,6 +15,7 @@ Local Open Scope nat_scope.
 Definition update_0 (st: nat -> nat -> nat) (j:nat) (n:nat) :=
     fun i => if i =? 0 then update (st 0) j n else st i.
 
+(*
 Definition sub_1 (v:nat -> basisket) (j:nat) :=
    fun a => if a =? 0 then (Cmult (sqrt (INR ((snd (v 0%nat)) 0 j))) (fst (v 0)),update_0 (snd (v 0)) j ((snd (v 0) 0 j) -1)) else v a.
 
@@ -37,17 +38,17 @@ Fixpoint times_state (m:nat) (m':nat) (lsize:nat) (s1 s2: nat -> basisket) :=
 
 Definition put_join (size:nat) (sa sb: parstate) :=
   match sa with Zero => Zero
-              | Sup m v =>
+              | Ket m v =>
     match sb with Zero => Zero
-                | Sup m' v' => Sup (m*m') (times_state m m' size v v')
+                | Ket m' v' => Ket (m*m') (times_state m m' size v v')
     end
   end.
 
 Definition put_plus (sa sb: parstate) :=
   match sa with Zero => Zero
-              | Sup m v =>
+              | Ket m v =>
     match sb with Zero => Zero
-                | Sup m' v' => Sup (m+m') (fun i => if i <? m then v i else v' (i - m))
+                | Ket m' v' => Ket (m+m') (fun i => if i <? m then v i else v' (i - m))
     end
   end.
 
@@ -68,30 +69,30 @@ Fixpoint cal_inner_aux' (m:nat) (nl: list partype ) (s2:basisket) (s1:nat -> bas
                         else cal_inner_aux' j nl s2 s1
    end.
 Definition cal_inner_aux (nl:list (nat*nat)) (s2:basisket) (s1:parstate) :=
-   match s1 with Sup m p => cal_inner_aux' m nl s2 p | Zero => C0 end.
+   match s1 with Ket m p => cal_inner_aux' m nl s2 p | Zero => C0 end.
 
 Fixpoint cal_inner' (m:nat) (nl:list partype) (s1:nat -> basisket) (s2:parstate) :=
    match m with 0 => C0
               | S j =>  Cplus (cal_inner_aux nl (s1 j) s2) (cal_inner' j nl s1 s2)
    end.
 Definition cal_inner (nl:list partype) (s1:parstate) (s2:parstate) :=
-   match s1 with Sup m p => cal_inner' m nl p s2 | Zero => C0 end.
-
+   match s1 with Ket m p => cal_inner' m nl p s2 | Zero => C0 end.
+*)
 (*
 Inductive resolve : exp -> nat * parstate -> Prop :=
   | zero_deal : forall t, resolve (St Zero t) (fst t, Zero)
-  | st_deal : forall m v t, resolve (St (Sup m v) t) (fst t, Sup m v)
+  | st_deal : forall m v t, resolve (St (Ket m v) t) (fst t, Ket m v)
   | tensor_deal: forall ea eb sa sb, resolve ea sa -> resolve eb sb
                  -> resolve (Tensor ea eb) (fst sa + fst sb, put_join (fst sa) (snd sa) (snd sb))
   | resolve_plus: forall ea eb la lb, fst la = fst lb -> resolve ea la -> resolve eb lb
                  -> resolve (Plus ea eb) (fst la, put_plus (snd la) (snd lb)).
 *)
 Inductive sem : exp -> exp -> Prop :=
-  | anni_0 : forall j c t tv v t', (snd (v 0)) 0 j = 0 -> sem (App (Anni j c t tv) (St (Sup 1 v) t')) (St Zero t')
-  | anni_n : forall j c t tv v t', (snd (v 0)) 0 j > 0 -> sem (App (Anni j c t tv) (St (Sup 1 v) t')) (St (Sup 1 (sub_1 v j)) t')
-  | crea_0 : forall j c t tv v t', (snd (v 0)) 0 j = (snd t) - 1 -> sem (App (Trans (Anni j c t tv)) (St (Sup 1 v) t')) (St Zero t')
+  | anni_0 : forall j c t tv v t', ((v 0)) 0 j = 0 -> sem (App (Anni j c t tv) (St (Ket c1 v) t')) (St Zero t').
+  | anni_n : forall j c t tv v t', (snd (v 0)) 0 j > 0 -> sem (App (Anni j c t tv) (St (Ket c v) t')) (St (Ket 1 (sub_1 v j)) t')
+  | crea_0 : forall j c t tv v t', (snd (v 0)) 0 j = (snd t) - 1 -> sem (App (Trans (Anni j c t tv)) (St (Ket 1 v) t')) (St Zero t')
   | crea_n : forall j c t tv v t', (snd (v 0)) 0 j < (snd t) - 1 
-                 -> sem (App (Trans (Anni j c t tv)) (St (Sup 1 v) t')) (St (Sup 1 (add_1 v j)) t')
+                 -> sem (App (Trans (Anni j c t tv)) (St (Ket 1 v) t')) (St (Ket 1 (add_1 v j)) t')
   | lambda_rule : forall y t ea eb ,  sem (App (Lambda y t ea) eb) (subst ea y eb)
   | mu_rule : forall y t ea eb ,  sem (App (Lambda y t ea) eb) (subst ea y eb) 
   | inner_rule : forall s s' nl nl', sem (App (Trans (St s nl)) (St s' nl')) (Val (cal_inner nl s s'))

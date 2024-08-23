@@ -10,23 +10,19 @@ Local Open Scope nat_scope.
 
 Definition var := nat.
 
-Definition spinbase : Type := (nat -> nat -> nat).
+Definition spinbase : Type := (nat -> nat).
 
 Definition allzero := fun (_:nat) (_:nat) => 0.
 
-Definition basisket : Type := C * spinbase.
-
 Definition zerostate := fun (_:nat) => (C0, allzero).
 
-Inductive parstate : Type := Sup (m:nat) (s:nat -> basisket) | Zero.
+Inductive parstate : Type := Ket (c:C) (s:spinbase) | Zero.
 
 Definition sigma : Set := nat.
 
 Definition partype :Set := nat * nat.
 
-Inductive qtype : Set := SType (p:partype) | TenType (l:qtype) (r:qtype).
-
-Coercion SType : partype >-> qtype.
+Definition qtype : Set := list partype.
 
 Inductive typeflag : Set := P | U | H. 
 
@@ -42,11 +38,11 @@ Inductive exp :=
         | Var (x:var)
         | Val (c:C)
         | Mul (c:C) (e:exp)
-        | St (s:parstate) (t:list partype)
+        | St (s: parstate) (t:partype)
         | Anni (s:sigma) (c:C) (t:partype) (tf:typeflag)
         | Trans (e:exp)
-        | Tensor (e1:exp) (e2:exp)
-        | Plus (e1:exp) (e2:exp)
+        | Tensor (e1:list exp)
+        | Plus (e1:list exp)
         | Nor (e:exp)
         | Exp (e:exp)
         | Log (e:exp)
@@ -63,8 +59,8 @@ Fixpoint subst (e:exp) (x:var) (e1:exp) :=
              | Mul c ea => Mul c (subst ea x e1)
              | Anni s c t tf => Anni s c t tf
              | Trans ea => Trans (subst ea x e1)
-             | Tensor ea eb => Tensor (subst ea x e1) (subst eb x e1)
-             | Plus ea eb => Plus (subst ea x e1) (subst eb x e1)
+             | Tensor ea => Tensor (List.map (fun e => subst e x e1) ea)
+             | Plus ea => Plus (List.map (fun e => subst e x e1) ea)
              | Nor ea => Nor (subst ea x e1)
              | Exp ea => Exp (subst ea x e1)
              | Log ea => Log (subst ea x e1)
@@ -86,8 +82,8 @@ Fixpoint freeVars (e:exp) :=
              | Anni s c t tf => []
              | Mul c ea => freeVars ea
              | Trans ea => freeVars ea
-             | Tensor ea eb => freeVars ea ++ freeVars eb
-             | Plus ea eb =>freeVars ea ++ freeVars eb
+             | Tensor ea => List.fold_right (fun e l => freeVars e ++ l) [] ea
+             | Plus ea => List.fold_right (fun e l => freeVars e ++ l) [] ea
              | Nor ea => freeVars ea
              | Exp ea => freeVars ea
              | Log ea => freeVars ea
@@ -104,8 +100,8 @@ Fixpoint varCap (e:exp) (x:var) :=
              | Anni s c t tf => False
              | Mul c ea => varCap ea x
              | Trans ea => varCap ea x 
-             | Tensor ea eb => varCap ea x \/ varCap eb x 
-             | Plus ea eb => varCap ea x \/ varCap eb x 
+             | Tensor ea => List.fold_right (fun e l => varCap e x \/ l) False ea 
+             | Plus ea => List.fold_right (fun e l => varCap e x \/ l) False ea 
              | Nor ea => varCap ea x 
              | Exp ea => varCap ea x 
              | Log ea => varCap ea x 
@@ -113,11 +109,6 @@ Fixpoint varCap (e:exp) (x:var) :=
              | Mu y t ea => if x =? y then True else varCap ea x 
              | If ea eb ec => varCap ea x \/ varCap eb x \/ varCap ec x
              | App ea eb => varCap ea x \/ varCap eb x 
-  end.
-
-Fixpoint gen_plus (m:nat) (s:nat -> basisket) (t: list partype) := 
-  match m with 0 => (St Zero t)
-             | S j => Plus (St (Sup 1 (fun a => if a =? 0 then s j else (C0, allzero))) t) (gen_plus j s t)
   end.
 
 Parameter I : exp.
@@ -128,33 +119,59 @@ Fixpoint eton (n:nat) (e:exp) :=
    match n with 0 => I
              | S m => App e (eton m e)
    end.
-Fixpoint pow_exp (n:nat) (e:exp) :=
-   match n with 0 => I
-              | S m => Plus (Mul (Cdiv (Copp Ci) (INR (fact(m)))) (eton m e)) (pow_exp m e)
-   end.
 
-Fixpoint pow_log (n:nat) (e:exp) :=
-   match n with 0 => Plus e (Mul (Copp C1) I)
-              | S m => Plus (Mul (Cdiv (Copp C1) (INR n)) (eton n (Plus I (Mul (Copp C1) e)))) (pow_log m e)
+Fixpoint pow_exp' (n:nat) (e:exp) :=
+    match n with 0 => nil
+               | S m => (Mul (Cdiv (Copp Ci) (INR (fact(m)))) (eton m e))::pow_exp' m e
+    end.
+Definition pow_exp n e :=
+   match pow_exp' n e with nil => I | l => Plus l end.
+
+Fixpoint pow_log' (n:nat) (e:exp) :=
+   match n with 0 => (e::((Mul (Copp C1) I)::nil))
+              | S m => (Mul (Cdiv (Copp C1) (INR n)) (eton n (Plus (I::(Mul (Copp C1) e)::nil))))::(pow_log' m e)
    end.
+Definition pow_log n e := Plus (pow_log' n e).
+
+
+Inductive is_zero : exp -> Prop :=
+  | single_zero : forall t, is_zero (St Zero t)
+  | multi_zero : forall l, Forall (fun x => match x with St Zero t => True | _ => False end) l -> is_zero (Tensor l).
+
+Fixpoint zip (xs : list exp) (ys : list exp) : list exp :=
+  match xs, ys with
+  | x :: xs, y :: ys => (App x y) :: zip xs ys
+  | _, _ => []
+  end.
+
 
 Inductive equiv : exp -> exp -> Prop :=
-  | state_sum : forall m s t, 1 < m -> equiv (St (Sup m s) t) (gen_plus m s t)
-  | alpha_1 : forall x y t ea, List.In y (freeVars ea) -> varCap ea y -> equiv (Lambda x t ea) (Lambda y t (subst ea x (Var y)))
-  | alpha_2 : forall x y t ea, List.In y (freeVars ea) -> varCap ea y -> equiv (Mu x t ea) (Mu y t (subst ea x (Var y)))
-  | plus_exb_1: forall ea eb ec, equiv (App (Plus ea eb) ec) (Plus (App ea ec) (App ea ec))
-  | plus_exb_2: forall ea eb ec, equiv (App ec (Plus ea eb)) (Plus (App ec ea) (App ec ea))
-  | plus_tensor_1: forall ea eb ec, equiv (Tensor (Plus ea eb) ec) (Plus (Tensor ea ec) (Tensor ea ec))
-  | plus_tensor_2: forall ea eb ec, equiv (Tensor ec (Plus ea eb)) (Plus (Tensor ec ea) (Tensor ec ea))
-  | trans_tensor: forall ea eb, equiv (Trans (Tensor ea eb)) (Tensor (Trans ea) (Trans eb))
-  | trans_plus: forall ea eb, equiv (Trans (Plus ea eb)) (Plus (Trans ea) (Trans eb))
+  | plus_st: forall x l, is_zero x ->  equiv (Plus (x::l)) (Plus l)
+  | alpha_1 : forall x y t ea, List.In y (freeVars ea) -> varCap ea y 
+         -> equiv (Lambda x t ea) (Lambda y t (subst ea x (Var y)))
+  | alpha_2 : forall x y t ea, List.In y (freeVars ea) -> varCap ea y 
+         -> equiv (Mu x t ea) (Mu y t (subst ea x (Var y)))
+  | plus_exb_1: forall ea eb, equiv (App (Plus ea) eb) (Plus (List.map (fun x => App x eb) ea))
+  | plus_exb_2: forall ea eb, equiv (App ea (Plus eb)) (Plus (List.map (fun x => App ea x) eb))
+  | plus_tensor: forall ea eb, equiv (Tensor ((Plus ea)::eb)) (Plus (List.map (fun x => Tensor (x::eb)) ea))
+(*  | plus_tensor_2: forall ea eb ec, equiv (Tensor ec (Plus ea eb)) (Plus (Tensor ec ea) (Tensor ec eb)) *)
+  | trans_tensor: forall e, equiv (Trans (Tensor e)) (Tensor (List.map (fun x => Trans x) e))
+  | trans_plus: forall e, equiv (Trans (Plus e)) (Plus (List.map (fun x => Trans x) e))
   | trans_app: forall ea eb, equiv (Trans (App ea eb)) (App (Trans eb) (Trans ea))
   | trans_mul: forall ea y t c, equiv (App ea (Trans (Lambda y t (Mul c (Var y))))) (Mul (Cconj c) ea)
   | trans_nor: forall ea, equiv (Trans (Nor ea)) (Nor (Trans ea))
-  | tensor_app : forall e1 e2 e3 e4, equiv (App (Tensor e1 e2) (Tensor e3 e4)) (Tensor (App e1 e3) (App e2 e4))
+  | tensor_app : forall el1 el2, length el1 = length el2 ->
+             equiv (App (Tensor (el1)) (Tensor (el2))) (Tensor (zip el1 el2))
   | exp_appx: forall e, equiv (Exp e) (pow_exp (find_n e) e)
   | log_appx: forall e, equiv (Log e) (pow_log (find_n e) e)
   | equiv_self : forall e, equiv e e
   | equiv_trans: forall e1 e2 e3, equiv e1 e2 -> equiv e2 e3 -> equiv e1 e3.
 
+Ltac ctx e1 e2 :=
+  let H := fresh "HCtx" in
+  assert (e1 = e2) as H by reflexivity.
 
+(* Standard inversion/subst/clear abbrev. *)
+Tactic Notation "inv" hyp(H) := inversion H; subst; clear H.
+Tactic Notation "inv" hyp(H) "as" simple_intropattern(p) :=
+  inversion H as p; subst; clear H.
