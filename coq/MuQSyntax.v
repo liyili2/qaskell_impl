@@ -12,11 +12,11 @@ Definition var := nat.
 
 Definition spinbase : Type := (nat -> nat).
 
-Definition allzero := fun (_:nat) (_:nat) => 0.
+Definition allzero := fun (_:nat) => 0.
 
 Definition zerostate := fun (_:nat) => (C0, allzero).
 
-Inductive parstate : Type := Ket (c:C) (s:spinbase) | Zero.
+Definition parstate : Type := (C * spinbase).
 
 Definition sigma : Set := nat.
 
@@ -38,6 +38,7 @@ Inductive exp :=
         | Var (x:var)
         | Val (c:C)
         | Mul (c:C) (e:exp)
+        | Zero (tl:list partype)
         | St (s: parstate) (t:partype)
         | Anni (s:sigma) (c:C) (t:partype) (tf:typeflag)
         | Trans (e:exp)
@@ -55,6 +56,7 @@ Inductive exp :=
 Fixpoint subst (e:exp) (x:var) (e1:exp) :=
   match e with Var y => if x =? y then e1 else Var y
              | Val c => Val c
+             | Zero tl => Zero tl
              | St s t => St s t
              | Mul c ea => Mul c (subst ea x e1)
              | Anni s c t tf => Anni s c t tf
@@ -78,6 +80,7 @@ Fixpoint list_sub (s:list var) (b:var) :=
 Fixpoint freeVars (e:exp) :=
   match e with Var y => [y]
              | Val c => []
+             | Zero tl => []
              | St s t => []
              | Anni s c t tf => []
              | Mul c ea => freeVars ea
@@ -96,6 +99,7 @@ Fixpoint freeVars (e:exp) :=
 Fixpoint varCap (e:exp) (x:var) :=
   match e with Var y => False
              | Val c => False
+             | Zero tl => False
              | St s t => False
              | Anni s c t tf => False
              | Mul c ea => varCap ea x
@@ -135,8 +139,9 @@ Definition pow_log n e := Plus (pow_log' n e).
 
 
 Inductive is_zero : exp -> Prop :=
-  | single_zero : forall t, is_zero (St Zero t)
-  | multi_zero : forall l, Forall (fun x => match x with St Zero t => True | _ => False end) l -> is_zero (Tensor l).
+  | single_zero : forall s t, allzero = snd s -> is_zero (St s t)
+  | multi_zero : forall l, Forall (fun x => match x with St s t => allzero = snd s
+                                                        | _ => False end) l -> is_zero (Tensor l).
 
 Fixpoint zip (xs : list exp) (ys : list exp) : list exp :=
   match xs, ys with
@@ -144,9 +149,15 @@ Fixpoint zip (xs : list exp) (ys : list exp) : list exp :=
   | _, _ => []
   end.
 
+Inductive MergeTensor: list exp -> list partype -> Prop :=
+  merge_tensor_empty : MergeTensor nil nil
+  | merge_tensor_many_1 : forall l tl s t, MergeTensor l tl -> MergeTensor ((St s t)::l) (t::tl)
+  | merge_tensor_many_2 : forall l tl t, MergeTensor l tl -> MergeTensor ((Zero t)::l) (t++tl).
+
 
 Inductive equiv : exp -> exp -> Prop :=
-  | plus_st: forall x l, is_zero x ->  equiv (Plus (x::l)) (Plus l)
+  | plus_st: forall tl l, equiv (Plus ((Zero tl)::l)) (Plus l)
+  | tensor_zero: forall l tl, (exists ta, In (Zero ta) l) -> MergeTensor l tl -> equiv (Tensor l) (Zero tl)
   | alpha_1 : forall x y t ea, List.In y (freeVars ea) -> varCap ea y 
          -> equiv (Lambda x t ea) (Lambda y t (subst ea x (Var y)))
   | alpha_2 : forall x y t ea, List.In y (freeVars ea) -> varCap ea y 

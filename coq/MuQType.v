@@ -14,6 +14,7 @@ Local Open Scope nat_scope.
    H refers to a Hermitian matrix where its transpose is the same as the matrix.
    U is the unitary, taking the exponent of the Hermitian matrix. *)
 
+(*
 Fixpoint check_base_aux (n:nat) (s:spinbase) (i:nat) (m:nat) :=
    match n with 0 => True
               | S j => check_base_aux j s i m /\ (s i j) < m
@@ -33,12 +34,27 @@ Definition good_base (s:parstate) (nl:list partype) :=
   match s with Zero => True
              | Sup m v => good_base' m v nl
   end.
+*)
 
+Inductive merge_ttype : list type -> type -> Prop :=
+  | merge_ttype_empty : merge_ttype nil (TType nil)
+  | merge_ttype_many: forall s x l, merge_ttype l (TType s) -> merge_ttype (QTy (TType x)::l) (TType (x++s)).
 
-Inductive merge : type -> type -> type -> Prop :=
-  | merge_st: forall s1 s2, merge (TType s1) (TType s2) (TType (s1 ++ s2))
-  | merge_dot: forall s1 s2, merge (IType s1) (IType s2) (IType (s1 ++ s2))
-  | merge_fun: forall f s1 s2, merge (FType f s1) (FType f s2) (FType f (s1 ++ s2)).
+Inductive merge_itype : list type -> type -> Prop :=
+  | merge_itype_empty : merge_itype nil (IType nil)
+  | merge_itype_many: forall s x l, merge_itype l (IType s) -> merge_itype (QTy (IType x)::l) (IType (x++s)).
+
+Inductive merge_ftype : list type -> type -> Prop :=
+  | merge_ftype_empty : forall f, merge_ftype nil (FType f nil)
+  | merge_ftype_many: forall f s x l, merge_ftype l (FType f s) -> merge_ftype (QTy (FType f x)::l) (FType f (x++s)).
+
+Inductive merge : list type -> type -> Prop :=
+  | merge_st: forall tl t, merge_ttype tl t -> merge tl t
+  | merge_dot: forall tl t, merge_itype tl t -> merge tl t
+  | merge_fun: forall tl t, merge_ftype tl t -> merge tl t.
+
+Definition good_base (s:parstate) (nl:partype) := 
+  forall k, k < fst nl -> (snd s) k < snd nl.
 
 Inductive join : typeflag -> typeflag -> typeflag -> Prop :=
   | join_same : forall tf, join tf tf tf
@@ -49,15 +65,16 @@ Inductive typing : (var -> type) -> exp -> type -> Prop :=
  (* | tpar : forall g t e1 e2, equiv e1 e2 -> typing g e2 t -> typing g e1 t *)
   | tvar : forall g x, typing g (Var x) (g x)
   | tval : forall g c, typing g (Val c) CT
-  | tvec : forall g s t, good_base s t -> typing g (St s t) (TType t)
+  | tzero: forall g tl, typing g (Zero tl) (TType tl)
+  | tvec : forall g s t, good_base s t -> typing g (St s t) (TType ([t]))
   | top : forall g j c t tf, j < fst t -> typing g (Anni j c t tf) (FType tf [t])
   | tlambda: forall g y t ea t', typing (update g y t) ea t' -> typing g (Lambda y t ea) t'
   | tmu : forall g y t ea, typing (update g y (FTy t t)) ea t -> typing g (Mu y t ea) (FTy t t)
   | tdag : forall g e t, typing g e (TType t) -> typing g (Trans e) (IType t)
   | tdagr : forall g e t, typing g e (IType t) -> typing g (Trans e) (TType t)
   | ttrans: forall g e tf t, typing g e (FType tf t) -> typing g (Trans e) (FType tf t)
-  | ttensor: forall g e1 e2 t1 t2 t3, typing g e1 t1 -> typing g e2 t2 -> merge t1 t2 t3 -> typing g (Tensor e1 e2) t3
-  | tplus: forall g e1 e2 t, typing g e1 t -> typing g e2 t -> typing g (Plus e1 e2) t
+  | ttensor: forall g e tl t, Forall2 (fun x y => typing g x y) e tl -> merge tl t -> typing g (Tensor e) t
+  | tplus: forall g e t, Forall (fun x => typing g x t) e -> typing g (Plus e) t
   | tapp: forall g e1 e2 t1 t2, typing g e1 (FTy t1 t2) -> typing g e2 t1 -> typing g (App e1 e2) t2
   | tmat: forall g e1 e2 tf t, typing g e1 (FType tf t) -> typing g e2 (TType t) -> typing g (App e1 e2) (TType t)
   | tinner: forall g e1 e2 t, typing g e1 (IType t) -> typing g e2 (TType t) -> typing g (App e1 e2) CT
@@ -85,22 +102,29 @@ Proof.
   apply IHequiv2 in H0. subst. easy.
 Qed.
 
-Lemma gen_plus_t: forall m s t g, good_base (Sup m s) t -> typing g (gen_plus m s t) (TType t).
+Lemma tzero_eq: forall e1 e2 tl, equiv e1 e2 -> e1 = Zero tl -> e2 = Zero tl.
 Proof.
-  induction m; intros; simpl in *; try easy.
-  constructor. easy. destruct H.
-  constructor. constructor.
-  unfold good_base; simpl in *. split; try easy.
-  apply IHm. easy.
+  intros.
+  induction H; try easy. subst.
+  assert (Zero tl = Zero tl) by easy. apply IHequiv1 in H0 as X1. subst.
+  apply IHequiv2 in H0. subst. easy.
 Qed.
 
-
-Lemma tst_eq: forall e1 e2 g s t, equiv e1 e2 -> e1 = St s t -> good_base s t -> typing g e2 (TType t).
+Lemma tst_eq: forall e1 e2 s t, equiv e1 e2 -> e1 = St s t -> e2 = St s t.
 Proof.
-  intros. generalize dependent s. generalize dependent t.
-  induction H; intros; try easy. inv H0. apply gen_plus_t. easy. subst.
-  constructor. easy. subst. apply IHequiv1 in H2 as X1; try easy.
-Admitted.
+  intros.
+  induction H; try easy. subst.
+  assert (St s t = St s t) by easy. apply IHequiv1 in H0 as X1. subst.
+  apply IHequiv2 in H0. subst. easy.
+Qed.
+
+Lemma tan_eq: forall e1 e2 s c t tf, equiv e1 e2 -> e1 = Anni s c t tf -> e2 = Anni s c t tf.
+Proof.
+  intros.
+  induction H; try easy. subst.
+  assert (Anni s c t tf = Anni s c t tf) by easy. apply IHequiv1 in H0 as X1. subst.
+  apply IHequiv2 in H0. subst. easy.
+Qed.
 
 Lemma type_equiv : forall e g t e1, typing g e t -> equiv e e1 -> typing g e1 t.
 Proof.
@@ -109,20 +133,10 @@ Proof.
   constructor.
   apply tval_eq with (c := c) in H0; try easy. subst.
   constructor.
-  eapply tst_eq in H0. apply H0. easy. easy.
-  
-  subst.
-  apply tval_eq with (c := c) in H; try easy. apply IHtyping; try easy.
-  apply IHtyping in H0. easy.
-Qed.
-
-Lemma tval_ct : forall e g c t , typing g e t -> e = Val c -> t = CT.
-Proof.
-  intros. induction H; simpl in *; try easy. subst.
-  apply tval_eq with (c := c) in H; try easy. apply IHtyping; try easy.
-  apply IHtyping in H0. easy.
-Qed.
-
+  eapply tzero_eq in H0; try easy. subst. constructor.
+  eapply tst_eq in H0; try easy. subst. constructor. easy.
+  eapply tan_eq in H0; try easy. subst. constructor. easy.
+Admitted.
 
 (*
 Check typing_ind.
