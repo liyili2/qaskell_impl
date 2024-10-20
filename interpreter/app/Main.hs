@@ -6,8 +6,6 @@ import Lib
 main :: IO ()
 main = someFunc
 
-type State = [Int]
-
 type Sigma = Int
 
 type Type = (Int , Int)
@@ -24,12 +22,11 @@ data Exp = Anni
 	| App Exp Exp
 	deriving (Show)
 	
-data Con = Var String
-        | Val [[Int]]
+data Con = Val Int | Var String | Add Con Con | Dot Con Con
 	| Let String Exp Con
-	| Sum Con Con
-	| Times Int Con
 	deriving (Show)
+
+type State = [String -> Exp]
 
 data V = A | B Int deriving (Show)
 
@@ -67,8 +64,19 @@ evals n vs (Plus e1 e2) = evals n vs e1 ++ evals n vs e2
 evals n vs e = do v <- vs
                return eval n v e
 
-
-
+evalpc :: State => Nat -> List S -> Exp -> List Int
+evalpc n vs (Val i) = i
+evalpc n vs (Var s) = do e <- Env s
+                         v <- eval n vs e
+                         return v
+evalpc n vs (Add p1 p2) = va <- evalpc n vs p1
+                          vb <- evalpc n vs p2
+                          return va + vb
+evalpc n vs (Dot p1 p2) = va <- evalpc n vs p1
+                          vb <- evalpc n vs p2
+                          return va * vb
+evalpc n vs (Let x e p) = do put Env x e
+                          evalpc n vs p
 
 --anti_s :: State -> Type -> State
 --anti_s Zero _ = Zero
