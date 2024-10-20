@@ -15,72 +15,38 @@ Local Open Scope nat_scope.
 (* We first define the values *)
 Fixpoint isMatrix (e:exp) :=
    match e with
-             | Trans (Anni s c t tf) => True
-             | Anni s c t tf => True 
-             | Plus x y => isMatrix x /\ isMatrix y
-             | Tensor x y => isMatrix x /\ isMatrix y
-             | _ => False
+             | Trans a => isMatrix a
+             | Anni s c t tf => true 
+             | Plus al => forallb (fun x => isMatrix x) al
+             | Tensor bl => forallb (fun x => isMatrix x) bl
+             | _ => false
    end.
 
-Definition value (e:exp) :=
-  match e with Var x => True
-             | Val c => True
-             | St s t => True
-             | Trans (St s t) => True
-             | Trans (Var x) => True
-             | Lambda x t e => True
-             | Mu x t e => True
+Fixpoint value (e:exp) :=
+  match e with Var x => true
+             | Val c => true
+             | St s t => true
+             | Zero tl => true
+             | Trans a => value a
+             | Lambda x t e => true
+             | Mu x t e => true
              | _ => isMatrix e
   end.
 
-
-
-Lemma tval_ct : forall e g c t , typing g e t -> e = Val c -> t = CT.
-Proof.
-  intros. induction H; simpl in *; try easy. subst.
-  apply tval_eq with (c := c) in H; try easy. apply IHtyping; try easy.
-  apply IHtyping in H0. easy.
-Qed.
-
-Lemma tvalue_eq: forall e g t, typing g e (TType t) -> value e
-               -> exists e1, equiv (Trans e) e1 /\ value e1.
-Proof.
-  induction e; intros; simpl in *.
-  exists (Trans (Var x)). split. apply equiv_self. easy.
-  apply tval_ct with (c := c) in H; try easy.
-  easy.
-  exists (Trans (St s t)).
-  split. apply equiv_self. easy.
-  exists (Trans (Anni s c t tf)).
-  split. apply equiv_self. easy.
-Admitted.
-
-
-
 (* The type progress theorem. For every well-typed expression, there exists a step. *)
 Theorem type_progress: forall g e1 t, typing g e1 t 
-   -> value e1 \/ exists e2, equiv e1 e2 /\ (value e2 \/ exists e3, sem e2 e3).
+   -> value e1 = true \/ exists e2, equiv e1 e2 /\ (value e2 = true \/ exists e3, sem e2 e3).
 Proof.
   intros.
   induction H; intros.
- - simpl in *; destruct IHtyping.
-   right. exists e2. split; try easy.
-   left. easy.
-   destruct H1 as [e3 [X1 X2]]. destruct X2.
-   right. exists e3. split. eapply equiv_trans. apply H. easy.
-   left. easy. right. destruct H1.
-   exists e3. split. eapply equiv_trans. apply H. easy.
-   right. exists x. easy.
  - left. easy.
  - left. easy.
  - left. easy.
  - left. easy.
  - left. easy.
  - left. easy.
- - destruct IHtyping.
-   apply tvalue_eq in H; try easy.
-   destruct H as [e1 [X1 X2]]. right.
-   exists e1. split. easy. left. easy.
+ - left. easy.
+ - destruct IHtyping. left. easy.
    destruct H0 as [e1 [X1 X2]].
    destruct X2.
    apply tpar with (g := g) (t := t) in X1 as X2; try easy; try easy.

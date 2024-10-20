@@ -15,9 +15,10 @@ type Type = (Int , Int)
 data Op = Anni | Crea
 	deriving (Show)
 
-data Exp = I
-        | Hold State
-	| Single Op Sigma Type
+data Exp = Anni
+        | Const Int Exp
+        | Ind Exp Nat
+        | Dagger Exp
 	| Plus Exp Exp
 	| Tensor Exp Exp
 	| App Exp Exp
@@ -29,7 +30,46 @@ data Con = Var String
 	| Sum Con Con
 	| Times Int Con
 	deriving (Show)
-	
+
+data V = A | B Int deriving (Show)
+
+data S = List V
+
+type val = List S
+
+evalSingle :: V -> Exp -> List V
+evalSingle A Anni = []
+evalSingle (B v) Anni = [A]
+evalSingle A (Dagger Anni) = [B 1]
+evalSingle (B v) (Dagger Anni) = []
+evalSingle v (Const z e) = case 
+evalSingle A Const z e = A
+
+timesE :: V -> Int -> V
+timesE A v = A
+timesE (B v1) v = B (v1 * v)
+
+eval :: Nat -> List V -> Exp -> List V
+eval n vs (App e1 e2) = eval n (eval n vs e2) e1
+eval n vs (Tensor e1 e2) =
+          let v1,v2 = partition n vs
+              eval n v1 e1 ++ eval n v2 e2
+                           
+eval n vs (Const z e) = do v <- eval n vs e
+                      return (timesE v z)
+eval n vs (Ind e n) = do v <- eval n vs e
+                      return vs!!n -- vs[n] is the index n of vs
+eval n vs e = do v <- vs
+                 case e of Anni | Dagger Anni -> return $ evalSingle v e
+                               
+evals :: Nat -> List S -> Exp -> List S
+evals n vs (Plus e1 e2) = evals n vs e1 ++ evals n vs e2
+evals n vs e = do v <- vs
+               return eval n v e
+
+
+
+
 --anti_s :: State -> Type -> State
 --anti_s Zero _ = Zero
 --anti_s (Pair n1 n2) t = Pair (t - n1) (t - n2)
