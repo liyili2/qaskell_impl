@@ -16,7 +16,7 @@ type Ix = Int
 
 data Exp where
   Anni :: Ix -> Exp
-  Const :: Int -> Exp -> Exp
+  Const :: Basic -> Exp -> Exp
   Dagger :: Exp -> Exp
   Plus :: Exp -> Exp -> Exp
   Tensor :: Exp -> Exp -> Exp

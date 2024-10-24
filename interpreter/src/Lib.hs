@@ -24,7 +24,9 @@ runChoice (Choice xs) = xs
 -- cartesianProduct :: [Tensor a] -> [Tensor a]
 -- cartesianProduct = undefined
 
-type Env = Choice (TensorPower Int)
+type Basic = Int
+
+type Env = Choice (TensorPower Basic)
 
 tensorIndex :: TensorPower a -> Int -> a
 tensorIndex (TensorPower xs) j = xs !! j
