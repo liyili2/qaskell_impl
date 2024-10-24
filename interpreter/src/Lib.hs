@@ -5,6 +5,8 @@ module Lib
 
 import Control.Applicative
 
+import Data.Complex
+
 -- TODO: Probability amplitudes
 newtype Choice a = Choice [a]
   deriving (Show, Semigroup, Monoid, Functor, Applicative, Monad, Alternative)
@@ -24,7 +26,7 @@ runChoice (Choice xs) = xs
 -- cartesianProduct :: [Tensor a] -> [Tensor a]
 -- cartesianProduct = undefined
 
-type Basic = Int
+type Basic = Complex Double
 
 type Env = Choice (TensorPower Basic)
 
