@@ -24,6 +24,7 @@ data Exp where
   Plus :: Exp -> Exp -> Exp
   Tensor :: Exp -> Exp -> Exp
   App :: Exp -> Exp -> Exp
+  Zero :: Exp
   deriving (Show)
 
 eval :: MonadPlus m => Env m -> Exp -> Env m
@@ -72,6 +73,53 @@ evalStep evalFn daggerFn env = \case
     pure (eChoice <> e'Choice)
 
   App e e' -> evalFn (evalFn env e') e
+
+  Zero -> pure (singletonTensor 0) -- TODO: Is this right?
+
+negateE :: Exp -> Exp
+negateE = Const (-1)
+
+summation :: Int -> Int -> (Int -> Exp) -> Exp
+summation start end body
+  | start >= end = Zero
+  | otherwise = Plus (body start) (summation (start+1) end body)
+
+pauliI :: Int -> Exp
+pauliI j =
+  Plus (App (Dagger (Anni j)) (Anni j))
+       (App (Anni j) (Dagger (Anni j)))
+
+-- TODO: Is this right?
+pauliX :: Int -> Exp
+pauliX j =
+  Plus (Dagger (Anni j)) (Anni j)
+
+pauliY :: Int -> Exp
+pauliY j =
+  let i = 0 :+ 1
+  in
+  Plus (Const i (Anni j))
+       (Const (- i) (Dagger (Anni j)))
+
+pauliZ :: Int -> Exp
+pauliZ j =
+  Plus (App (Anni j) (Dagger (Anni j)))
+       (App (Dagger (negateE (Anni j))) (Anni j))
+
+
+-- Examples --
+
+equalSumZ' :: Int -> Exp
+equalSumZ' j =
+  Plus (App (Dagger (Anni j)) (Anni j))
+       (App (Dagger (negateE (Anni j))) (Anni j))
+
+-- equalSum :: (Int -> Basic) -> Exp
+-- equalSum =
+--   
+
+
+
 
 -- type Sigma = Int
 --
