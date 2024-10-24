@@ -5,6 +5,8 @@ module Main (main) where
 
 import Lib
 
+import Data.Complex
+
 
 main :: IO ()
 main = pure ()
@@ -24,31 +26,51 @@ data Exp where
   deriving (Show)
 
 eval :: Env -> Exp -> Env
-eval env = \case
+eval = evalStep eval evalDagger
+
+-- | `evalDagger env e` should mean the same thing as `eval env (Dagger e)`
+evalDagger :: Env -> Exp -> Env
+evalDagger env = \case
+  Anni j -> do
+    s <- env
+
+    let v = tensorIndex s j
+        v' = conjugate v
+
+    pure (singletonTensor v')
+
+  Const k e -> do
+    let k' = conjugate k
+
+    s <- evalDagger env e
+    pure (fmap (k' *) s)
+
+  e -> evalStep evalDagger eval env e
+
+-- | Run evaluation using the given function arguments for the 'recursive
+-- call'
+evalStep :: (Env -> Exp -> Env) -> (Env -> Exp -> Env) -> Env -> Exp -> Env
+evalStep evalFn daggerFn env = \case
   Anni j -> do
     s <- env
     pure (singletonTensor (tensorIndex s j))
 
   Const k e -> do
-    s <- env
+    s <- evalFn env e
     pure (fmap (k *) s)
 
-  Dagger e -> evalDagger env e
+  Dagger e -> daggerFn env e
 
   Plus e e' ->
-    eval env e <> eval env e'
+    evalFn env e <> evalFn env e'
 
   Tensor e e' ->
-    let choicesE = eval env e
-        choicesE' = eval env e'
+    let choicesE = evalFn env e
+        choicesE' = evalFn env e'
     in
     zipWithChoices (<>) choicesE choicesE' -- TODO: Is this right?
 
-  App e e' -> eval (eval env e') e
-
--- | `evalDagger env e` should mean the same thing as `eval env (Dagger e)`
-evalDagger :: Env -> Exp -> Env
-evalDagger env = undefined -- TODO
+  App e e' -> evalFn (evalFn env e') e
 
 -- type Sigma = Int
 --
