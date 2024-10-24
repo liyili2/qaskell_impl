@@ -64,11 +64,11 @@ evalStep evalFn daggerFn env = \case
   Plus e e' ->
     evalFn env e <> evalFn env e'
 
-  Tensor e e' ->
-    let choicesE = evalFn env e
-        choicesE' = evalFn env e'
-    in
-    zipWithChoices (<>) choicesE choicesE' -- TODO: Is this right?
+  Tensor e e' -> do
+    eChoice <- evalFn env e
+    e'Choice <- evalFn env e'
+
+    pure (eChoice <> e'Choice)
 
   App e e' -> evalFn (evalFn env e') e
 

@@ -17,9 +17,6 @@ newtype TensorPower a = TensorPower [a]
 choice :: [a] -> Choice a
 choice = Choice
 
-zipWithChoices :: (a -> b -> c) -> Choice a -> Choice b -> Choice c
-zipWithChoices f (Choice xs) (Choice ys) = Choice (zipWith f xs ys)
-
 runChoice :: Choice a -> [a]
 runChoice (Choice xs) = xs
 
