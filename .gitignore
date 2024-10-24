@@ -1,0 +1,9 @@
+dist-newstyle
+*.prof
+.vscode/
+*.aux
+*.log
+*.pdf
+.DS_Store
+stack.yaml.lock
+.stack-work
