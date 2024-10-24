@@ -6,6 +6,7 @@ module Main (main) where
 import Lib
 
 import Data.Complex
+import Control.Monad
 
 
 main :: IO ()
@@ -25,11 +26,11 @@ data Exp where
   App :: Exp -> Exp -> Exp
   deriving (Show)
 
-eval :: Env -> Exp -> Env
+eval :: MonadPlus m => Env m -> Exp -> Env m
 eval = evalStep eval evalDagger
 
 -- | `evalDagger env e` should mean the same thing as `eval env (Dagger e)`
-evalDagger :: Env -> Exp -> Env
+evalDagger :: MonadPlus m => Env m -> Exp -> Env m
 evalDagger env = \case
   Anni j -> do
     s <- env
@@ -49,7 +50,7 @@ evalDagger env = \case
 
 -- | Run evaluation using the given function arguments for the 'recursive
 -- call'
-evalStep :: (Env -> Exp -> Env) -> (Env -> Exp -> Env) -> Env -> Exp -> Env
+evalStep :: MonadPlus m => (Env m -> Exp -> Env m) -> (Env m -> Exp -> Env m) -> Env m -> Exp -> Env m
 evalStep evalFn daggerFn env = \case
   Anni j -> do
     s <- env
@@ -62,7 +63,7 @@ evalStep evalFn daggerFn env = \case
   Dagger e -> daggerFn env e
 
   Plus e e' ->
-    evalFn env e <> evalFn env e'
+    evalFn env e `mplus` evalFn env e'
 
   Tensor e e' -> do
     eChoice <- evalFn env e

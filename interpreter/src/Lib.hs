@@ -25,7 +25,7 @@ runChoice (Choice xs) = xs
 
 type Basic = Complex Double
 
-type Env = Choice (TensorPower Basic)
+type Env m = m (TensorPower Basic)
 
 tensorIndex :: TensorPower a -> Int -> a
 tensorIndex (TensorPower xs) j = xs !! j
