@@ -27,6 +27,27 @@ data Exp where
   Zero :: Exp
   deriving (Show)
 
+-- | Constraint language
+data CExp where
+  CAdd :: CExp -> CExp -> CExp
+  CTimes :: CExp -> CExp -> CExp
+  Exp :: Exp -> CExp
+  deriving (Show)
+
+cEval :: MonadPlus m => Env m -> CExp -> Env m
+cEval env = \case
+  CAdd e e' -> do
+    v1 <- cEval env e
+    v2 <- cEval env e'
+    pure (tensorZipWith (+) v1 v2)
+
+  CTimes e e' -> do
+    v1 <- cEval env e
+    v2 <- cEval env e'
+    pure (tensorZipWith (*) v1 v2)
+
+  Exp e -> eval env e
+
 eval :: MonadPlus m => Env m -> Exp -> Env m
 eval = evalStep eval evalDagger
 
@@ -79,10 +100,10 @@ evalStep evalFn daggerFn env = \case
 negateE :: Exp -> Exp
 negateE = Const (-1)
 
-summation :: Int -> Int -> (Int -> Exp) -> Exp
+summation :: Int -> Int -> (Int -> CExp) -> CExp
 summation start end body
-  | start >= end = Zero
-  | otherwise = Plus (body start) (summation (start+1) end body)
+  | start >= end = Exp Zero
+  | otherwise = CAdd (body start) (summation (start+1) end body)
 
 pauliI :: Int -> Exp
 pauliI j =
@@ -114,9 +135,12 @@ equalSumZ' j =
   Plus (App (Dagger (Anni j)) (Anni j))
        (App (Dagger (negateE (Anni j))) (Anni j))
 
--- equalSum :: (Int -> Basic) -> Exp
--- equalSum =
---   
+equalSum :: Int -> (Int -> Basic) -> CExp
+equalSum n g =
+  CTimes
+    -- TODO: Should this be 0 to n-1?
+    (summation 0 n (\j -> Exp (Const (g j) (equalSumZ' j))))
+    (summation 0 n (\j -> Exp (Const (g j) (equalSumZ' j))))
 
 
 

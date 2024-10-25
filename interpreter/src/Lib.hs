@@ -33,3 +33,7 @@ tensorIndex (TensorPower xs) j = xs !! j
 singletonTensor :: a -> TensorPower a
 singletonTensor x = TensorPower [x]
 
+tensorZipWith :: (a -> b -> c) -> TensorPower a -> TensorPower b -> TensorPower c
+tensorZipWith f (TensorPower xs) (TensorPower ys) =
+  TensorPower (zipWith f xs ys)
+
