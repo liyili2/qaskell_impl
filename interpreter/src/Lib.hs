@@ -4,6 +4,10 @@ module Lib
   where
 
 import Control.Applicative
+import Control.Monad
+
+import Data.Ord
+import Data.Foldable
 
 import Data.Complex
 
@@ -36,4 +40,17 @@ singletonTensor x = TensorPower [x]
 tensorZipWith :: (a -> b -> c) -> TensorPower a -> TensorPower b -> TensorPower c
 tensorZipWith f (TensorPower xs) (TensorPower ys) =
   TensorPower (zipWith f xs ys)
+
+quadrance :: TensorPower Basic -> Double
+quadrance (TensorPower xs) = toDouble (sum (map sqrMagnitude xs))
+  where
+    toDouble (r :+ _) = r
+
+    sqrMagnitude x = x * conjugate x
+
+tensorMagnitude :: TensorPower Basic -> Double
+tensorMagnitude = sqrt . quadrance
+
+getMin :: (MonadPlus m, Foldable m) => Env m -> TensorPower Basic
+getMin = minimumBy (comparing tensorMagnitude)
 
