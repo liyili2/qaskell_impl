@@ -10,7 +10,6 @@ import Data.Bifunctor
 data Adjacent a = Adjacent a a
   deriving (Show, Functor)
 
--- | Adjacency list
 type Graph a = [Adjacent a]
 
 -- TODO: Is this correct? What about H_A?
