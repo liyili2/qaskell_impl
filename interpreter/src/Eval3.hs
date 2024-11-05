@@ -145,7 +145,7 @@ graphPartition Proxy adj = solveF choices
         (fmap adjacencySumBody adj')
 
     adjacencySumBody :: (IntWeighted (), IntWeighted ()) -> Int
-    adjacencySumBody (Weighted w1 (), Weighted w2 ()) = w1 * w2
+    adjacencySumBody (Weighted w1 (), Weighted w2 ()) = (1 - (w1 * w2)) `div` 2
 
 -- NOTE: For instance, you can run this at GHCi:
 -- ghci> eqSum (Proxy @[]) list1
