@@ -97,13 +97,20 @@ listWeights = generateChoices 1 (-1)
 eqSum :: [Int] -> Int
 eqSum ns = solveF choices
   where
-    choices :: Choices (Components Proxy [] Int)
-    choices = map components (generateChoices 1 (-1) ns)
+    choices :: Choices (Components [] Proxy Int)
+    choices = map components listElementChoices
 
-    components :: [IntWeighted Int] -> Components Proxy [] Int
+    listElementChoices :: Choices [IntWeighted Int]
+    listElementChoices = generateChoices 1 (-1) ns
+
+    components :: [IntWeighted Int] -> Components [] Proxy Int
     components weightedElems =
-      Components Proxy (map (foldWeighted (*)) weightedElems)
+      Components
+          -- hA
+        (map (foldWeighted (*)) weightedElems)
 
+          -- hB (stays 0)
+        Proxy
 
 graphPartition :: [()] -> AdjMatrix ((), ()) -> Int
 graphPartition nodes adj = solveF choices
