@@ -169,7 +169,7 @@ cliqueExists Proxy k adj =
     choices = fmap components nodeWeightChoices
 
     nodeWeightChoices :: m [IntWeighted ()]
-    nodeWeightChoices = generateChoices 1 (-1) nodes
+    nodeWeightChoices = generateChoices 0 1 nodes
 
     components :: [IntWeighted ()] -> Components [] AdjMatrix Int
     components nodeWeights =
@@ -178,18 +178,12 @@ cliqueExists Proxy k adj =
       in
       Components
           -- hA
-        (fmap (calcX . getWeight) nodeWeights)
+        (fmap (foldWeighted (\x () -> x)) nodeWeights)
 
           -- hB
         (fmap adjacencySumBody adj')
 
-    adjacencySumBody (Weighted w1 (), Weighted w2 ()) = calcX w1 * calcX w2
-
-    getWeight :: IntWeighted a -> Int
-    getWeight (Weighted w _) = w
-
-    calcX :: Int -> Int
-    calcX s = (s + 1) `div` 2
+    adjacencySumBody (Weighted w1 (), Weighted w2 ()) = w1 * w2
 
 -- NOTE: For instance, you can run this at GHCi:
 -- ghci> eqSum (Proxy @[]) list1
@@ -251,6 +245,7 @@ graph2 =
     , [Just (), Nothing, Nothing, Nothing]
 
       -- D
+        -- A      B       C        D
     , [Nothing, Just (), Nothing, Nothing]
     ]
 
