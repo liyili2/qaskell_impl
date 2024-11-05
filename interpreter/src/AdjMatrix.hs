@@ -2,6 +2,7 @@ module AdjMatrix
   (AdjMatrix
   ,adjMatrix
   ,completeGraph
+  ,getNodes
   ,updateNodeContents
   )
   where
@@ -17,6 +18,9 @@ completeGraph nodes =
   AdjMatrix $
   map (\x -> map (\y -> Just (x, y)) nodes)
           nodes
+
+getNodes :: AdjMatrix a -> [()]
+getNodes (AdjMatrix adj) = map (const ()) adj
 
 updateNodeContents :: AdjMatrix a -> [b] -> AdjMatrix (b, b)
 updateNodeContents (AdjMatrix adj) nodes =

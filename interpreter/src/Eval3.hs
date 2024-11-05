@@ -119,11 +119,13 @@ eqSum Proxy ns = solveF choices
 
 graphPartition :: forall m. (Foldable m, MonadPlus m) =>
   Proxy m -> -- This is just so that the m is unambiguous, since it isn't used in the rest of the type
-  [()] ->
-  AdjMatrix ((), ()) ->
+  AdjMatrix () ->
   Int
-graphPartition Proxy nodes adj = solveF choices
+graphPartition Proxy adj = solveF choices
   where
+    nodes :: [()]
+    nodes = getNodes adj
+
     choices :: m (Components [] AdjMatrix Int)
     choices = fmap components nodeWeightChoices
 
@@ -144,4 +146,67 @@ graphPartition Proxy nodes adj = solveF choices
 
     adjacencySumBody :: (IntWeighted (), IntWeighted ()) -> Int
     adjacencySumBody (Weighted w1 (), Weighted w2 ()) = w1 * w2
+
+-- NOTE: For instance, you can run this at GHCi:
+-- ghci> eqSum (Proxy @[]) list1
+
+list1 :: [Int]
+list1 = [1,3,4]
+
+list2 :: [Int]
+list2 = [2,3,4]
+
+
+--  A --- B    D
+--  |    /     |
+--  |   /      |
+--  |  /       |
+--  | /        |
+--  C          E
+graph1 :: AdjMatrix ()
+graph1 =
+  adjMatrix
+    [ -- A --
+        -- A      B        C        D        E
+      [Nothing, Just (), Just (), Nothing, Nothing]
+
+      -- B --
+        -- A      B        C        D        E
+    , [Just (), Nothing, Just (), Nothing, Nothing]
+
+      -- C --
+        -- A      B        C        D        E
+    , [Just (), Just (), Nothing, Nothing, Nothing]
+
+      -- D --
+        -- A      B        C        D        E
+    , [Nothing, Nothing, Nothing, Nothing, Just ()]
+
+      -- E --
+        -- A      B        C        D        E
+    , [Nothing, Nothing, Nothing, Just (), Nothing]
+    ]
+
+-- A --- B
+-- |     |
+-- |     |
+-- C     D
+graph2 :: AdjMatrix ()
+graph2 =
+  adjMatrix
+    [ -- A
+        -- A      B       C        D
+      [Nothing, Just (), Just (), Nothing]
+
+      -- B
+        -- A      B       C        D
+    , [Just (), Nothing, Nothing, Just ()]
+
+      -- C
+        -- A      B       C        D
+    , [Just (), Nothing, Nothing, Nothing]
+
+      -- D
+    , [Nothing, Just (), Nothing, Nothing]
+    ]
 
