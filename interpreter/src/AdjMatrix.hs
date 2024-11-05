@@ -1,8 +1,16 @@
 module AdjMatrix
+  (AdjMatrix
+  ,adjMatrix
+  ,completeGraph
+  ,updateNodeContents
+  )
   where
 
 newtype AdjMatrix a = AdjMatrix [[Maybe a]]
   deriving (Functor, Foldable)
+
+adjMatrix :: [[Maybe a]] -> AdjMatrix a
+adjMatrix = AdjMatrix
 
 completeGraph :: [a] -> AdjMatrix (a, a)
 completeGraph nodes =

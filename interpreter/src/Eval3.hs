@@ -1,3 +1,5 @@
+{-# LANGUAGE ScopedTypeVariables #-}
+
 module Eval3 where
 
 import Control.Monad
@@ -94,13 +96,16 @@ listWeights = generateChoices 1 (-1)
 
 ---- Examples ----
 
-eqSum :: [Int] -> Int
-eqSum ns = solveF choices
+eqSum :: forall m. (Foldable m, MonadPlus m) =>
+  Proxy m -> -- This is just so that the m is unambiguous, since it isn't used in the rest of the type
+  [Int] ->
+  Int
+eqSum Proxy ns = solveF choices
   where
-    choices :: Choices (Components [] Proxy Int)
-    choices = map components listElementChoices
+    choices :: m (Components [] Proxy Int)
+    choices = fmap components listElementChoices
 
-    listElementChoices :: Choices [IntWeighted Int]
+    listElementChoices :: m [IntWeighted Int]
     listElementChoices = generateChoices 1 (-1) ns
 
     components :: [IntWeighted Int] -> Components [] Proxy Int
@@ -112,13 +117,17 @@ eqSum ns = solveF choices
           -- hB (stays 0)
         Proxy
 
-graphPartition :: [()] -> AdjMatrix ((), ()) -> Int
-graphPartition nodes adj = solveF choices
+graphPartition :: forall m. (Foldable m, MonadPlus m) =>
+  Proxy m -> -- This is just so that the m is unambiguous, since it isn't used in the rest of the type
+  [()] ->
+  AdjMatrix ((), ()) ->
+  Int
+graphPartition Proxy nodes adj = solveF choices
   where
-    choices :: Choices (Components [] AdjMatrix Int)
-    choices = map components nodeWeightChoices
+    choices :: m (Components [] AdjMatrix Int)
+    choices = fmap components nodeWeightChoices
 
-    nodeWeightChoices :: Choices [IntWeighted ()]
+    nodeWeightChoices :: m [IntWeighted ()]
     nodeWeightChoices = generateChoices 1 (-1) nodes
 
     components :: [IntWeighted ()] -> Components [] AdjMatrix Int
