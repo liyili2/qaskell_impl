@@ -1,3 +1,5 @@
+{-# OPTIONS_GHC -Wno-unrecognised-pragmas #-}
+{-# HLINT ignore "Use tuple-section" #-}
 module Eval2 where
 
 import Control.Monad
@@ -84,3 +86,108 @@ ghci> eqSumT tr2
 --}
 
 ------------------------------------------------------------------------------
+-- Graph data structure with Int vertices and edges
+data Graph e = Graph { vertices :: [Int], edges :: [(Int, e, Int)] }
+  deriving Show
+
+instance Functor Graph where
+  fmap f (Graph vs es) = Graph vs (map (\(v1, e, v2) -> (v1, f e, v2)) es)
+
+instance Foldable Graph where
+  foldr f acc (Graph _ es) = foldr (\(_, e, _) acc -> f e acc) acc es
+
+instance Traversable Graph where
+  -- traverse :: Applicative f => (a -> f b) -> Graph a -> f (Graph b)
+  traverse f (Graph vs es) = Graph vs <$> traverse (\(v1, e, v2) -> (\e' -> (v1, e', v2)) <$> f e) es
+
+-- Example graph for testing Traversable on edges
+graphEdgesExample :: Graph Int
+graphEdgesExample = Graph { vertices = [10, 20, 30], edges = [(10, 1, 20), (20, 2, 30), (30, 3, 10)] }
+
+-- Traversing edges with a function (for example, incrementing each edge weight by 1)
+incrementEdges :: Graph Int -> Graph Int
+incrementEdges = fmap (+1)
+
+-- Function to update edge weights based on the product of the vertices
+updateEdgeWeights :: Graph Int -> Graph Int
+updateEdgeWeights (Graph vs es) = Graph vs (map updateEdge es)
+  where
+    -- updateEdge sets the weight to be the product of the two vertices
+    updateEdge (v1, _, v2) = (v1, v1 * v2, v2)
+
+-- Traversing vertices by creating a list of each vertex (demonstrates Foldable behavior)
+verticesList :: Graph e -> [Int]
+verticesList = vertices
+
+-- Test incrementEdges to increase each edge weight in graphEdgesExample
+testIncrementEdges :: Graph Int
+testIncrementEdges = incrementEdges graphEdgesExample
+
+-- Collect the vertices in a list
+testVerticesList :: [Int]
+testVerticesList = verticesList graphEdgesExample
+
+-- Test updateEdgeWeights to update each edge weight to the product of the vertices in graphEdgesExample
+testUpdateEdgeWeights :: Graph Int
+testUpdateEdgeWeights = updateEdgeWeights graphEdgesExample
+
+-- edgeTraverse function that traverses edges, applies a user-defined operation to edge weights,
+-- and collapses with a user-defined function
+edgeTraverse :: (Num e) => (e -> e -> e) -> Graph e -> e
+edgeTraverse collapse (Graph _ es) = foldr collapse 1 (map extractEdgeWeight es)
+  where
+    extractEdgeWeight (_, weight, _) = weight
+
+-- Example collapse operations
+sumCollapse :: Int -> Int -> Int
+sumCollapse = (+)
+
+prodCollapse :: Int -> Int -> Int
+prodCollapse = (*)
+
+minCollapse :: Int -> Int -> Int
+minCollapse = min
+
+-- Example usage
+-- Calculate the sum of all edge weights
+testSumCollapse :: Int
+testSumCollapse = edgeTraverse sumCollapse graphEdgesExample
+
+testProdCollapse :: Int
+testProdCollapse = edgeTraverse prodCollapse graphEdgesExample
+
+-- Calculate the minimum of all edge weights
+testMinCollapse :: Int
+testMinCollapse = edgeTraverse minCollapse graphEdgesExample
+
+{--
+
+ghci> eqSumG graphEdgesExample
+0
+
+--}
+
+eqSumG :: Graph Int -> Int
+eqSumG g = solveF choices
+  where choices :: [ Graph (Int,Int) ]
+        choices = generateChoices 1 (-1) g
+
+{--
+
+ghci> graphPartition exampleGraph
+1
+
+--}
+exampleGraph :: Graph Int
+exampleGraph = Graph { vertices = [1, -1, 2], edges = [(1, 1, 2), (-1, 1, 1), (2, 1, -1)] }
+
+graphPartition :: Graph Int -> Int
+graphPartition gr = solveF choices
+  where
+    -- Calculates the "adjacency" based on vertex values for each edge
+    calculateAdjacent :: (Int, Int, Int) -> Int
+    calculateAdjacent (su, _, sv) = (1 - (su * sv)) `div` 2
+
+    -- Generate choices by traversing edges and calculating adjacency values
+    choices :: [[(Int, Int)]]
+    choices = traverse (\(v1, weight, v2) -> [(weight, calculateAdjacent (v1, weight, v2))]) (edges gr)
