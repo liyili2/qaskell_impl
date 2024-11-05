@@ -158,8 +158,8 @@ cliqueExists :: forall m. (Foldable m, MonadPlus m) =>
   AdjMatrix () ->
   Int
 cliqueExists Proxy k adj =
-    solveF (\x -> square (k + x))            -- postprocessing for hA
-           (\x -> ((k * (k+1)) `div` 2) + x) -- postprocessing for hB
+    solveF (\x -> square (k - x))            -- postprocessing for hA
+           (\x -> ((k * (k+1)) `div` 2) - x) -- postprocessing for hB
            choices
   where
     nodes :: [()]
