@@ -69,20 +69,25 @@ sqrtEnergy ch = foldr (\(d,a) s -> s + d*a) 0 ch
   -- where sq a = a * a
 
 energy :: Foldable t => t (Int,Int) -> Int
-energy = sq . sqrtEnergy
-  where
-    sq a = a * a
+energy = square . sqrtEnergy
 
--- TODO: Generalize to things that don't square the hA
-sumComponents :: (Foldable s, Foldable t) => Components s t Int -> Int
-sumComponents comp =
-  sq (sum (cHA comp)) + sum (cHB comp)
-  where
-    sq a = a * a
+sumComponents :: (Foldable s, Foldable t, Num a) =>
+  (a -> a) ->
+  (a -> a) ->
+  Components s t a ->
+  a
+sumComponents postprocessHA postprocessHB comp =
+  postprocessHA (sum (cHA comp)) + postprocessHB (sum (cHB comp))
 
-solveF :: (Functor f, Foldable f, Foldable s, Foldable t) =>
-  f (Components s t Int) -> Int
-solveF chs = foldr1 min $ fmap sumComponents chs
+square :: Num a => a -> a
+square x = x * x
+
+solveF :: (Functor f, Foldable f, Foldable s, Foldable t, Num a, Ord a) =>
+  (a -> a) ->
+  (a -> a) ->
+  f (Components s t a) -> a
+solveF postprocessHA postprocessHB =
+    foldr1 min . fmap (sumComponents postprocessHA postprocessHB)
 
 type Choices = []
 
@@ -100,7 +105,7 @@ eqSum :: forall m. (Foldable m, MonadPlus m) =>
   Proxy m -> -- This is just so that the m is unambiguous, since it isn't used in the rest of the type
   [Int] ->
   Int
-eqSum Proxy ns = solveF choices
+eqSum Proxy ns = solveF square id choices
   where
     choices :: m (Components [] Proxy Int)
     choices = fmap components listElementChoices
@@ -120,8 +125,42 @@ eqSum Proxy ns = solveF choices
 graphPartition :: forall m. (Foldable m, MonadPlus m) =>
   Proxy m -> -- This is just so that the m is unambiguous, since it isn't used in the rest of the type
   AdjMatrix () ->
+  Double
+graphPartition Proxy adj = solveF square id choices
+  where
+    nodes :: [()]
+    nodes = getNodes adj
+
+    choices :: m (Components [] AdjMatrix Double)
+    choices = fmap components nodeWeightChoices
+
+    nodeWeightChoices :: m [IntWeighted ()]
+    nodeWeightChoices = generateChoices 1 (-1) nodes
+
+    components :: [IntWeighted ()] -> Components [] AdjMatrix Double
+    components nodeWeights =
+      let adj' :: AdjMatrix (IntWeighted (), IntWeighted ())
+          adj' = updateNodeContents adj nodeWeights
+      in
+      Components
+          -- hA
+        (fmap (foldWeighted (\x () -> fromIntegral x)) nodeWeights)
+        
+          -- hB
+        (fmap adjacencySumBody adj')
+
+    adjacencySumBody :: (IntWeighted (), IntWeighted ()) -> Double
+    adjacencySumBody (Weighted w1 (), Weighted w2 ()) = (1 - fromIntegral (w1 * w2)) / 2
+
+cliqueExists :: forall m. (Foldable m, MonadPlus m) =>
+  Proxy m ->
+  Int ->
+  AdjMatrix () ->
   Int
-graphPartition Proxy adj = solveF choices
+cliqueExists Proxy k adj =
+    solveF (\x -> square (k + x))            -- postprocessing for hA
+           (\x -> ((k * (k+1)) `div` 2) + x) -- postprocessing for hB
+           choices
   where
     nodes :: [()]
     nodes = getNodes adj
@@ -139,13 +178,18 @@ graphPartition Proxy adj = solveF choices
       in
       Components
           -- hA
-        (fmap (foldWeighted (\x () -> x)) nodeWeights)
-        
+        (fmap (calcX . getWeight) nodeWeights)
+
           -- hB
         (fmap adjacencySumBody adj')
 
-    adjacencySumBody :: (IntWeighted (), IntWeighted ()) -> Int
-    adjacencySumBody (Weighted w1 (), Weighted w2 ()) = (1 - (w1 * w2)) `div` 2
+    adjacencySumBody (Weighted w1 (), Weighted w2 ()) = calcX w1 * calcX w2
+
+    getWeight :: IntWeighted a -> Int
+    getWeight (Weighted w _) = w
+
+    calcX :: Int -> Int
+    calcX s = (s + 1) `div` 2
 
 -- NOTE: For instance, you can run this at GHCi:
 -- ghci> eqSum (Proxy @[]) list1
