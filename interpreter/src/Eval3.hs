@@ -226,7 +226,7 @@ graphColoring Proxy colors adj = solveF id id choices
         (fmap calcHB adj')
 
     calcHA :: Weighted [color] () -> Int
-    calcHA (Weighted colors ()) = 1 - length colors
+    calcHA (Weighted colors ()) = square (1 - length colors)
 
     calcHB :: (Weighted [color] (), Weighted [color] ()) -> Int
     calcHB (Weighted colors1 (), Weighted colors2 ()) =
