@@ -90,8 +90,10 @@ ghci> eqSumT tr2
 data Graph e = Graph { vertices :: [Int], edges :: [(Int, e, Int)] }
   deriving Show
 
+-- instance Functor Graph where
+--   fmap f (Graph vs es) = Graph vs (map (\(v1, e, v2) -> (v1, f e, v2)) es)
 instance Functor Graph where
-  fmap f (Graph vs es) = Graph vs (map (\(v1, e, v2) -> (v1, f e, v2)) es)
+  fmap f (Graph vs es) = Graph vs (pure (\(v1, e, v2) -> (v1, f e, v2)) <*> es)
 
 instance Foldable Graph where
   foldr f acc (Graph _ es) = foldr (\(_, e, _) acc -> f e acc) acc es
@@ -109,10 +111,13 @@ incrementEdges :: Graph Int -> Graph Int
 incrementEdges = fmap (+1)
 
 -- Function to update edge weights based on the product of the vertices
-updateEdgeWeights :: Graph Int -> Graph Int
-updateEdgeWeights (Graph vs es) = Graph vs (map updateEdge es)
+-- updateEdgeWeights :: Graph Int -> Graph Int
+-- updateEdgeWeights (Graph vs es) = Graph vs (map updateEdge es)
+--   where
+--     -- updateEdge sets the weight to be the product of the two vertices
+--     updateEdge (v1, _, v2) = (v1, v1 * v2, v2)
+updateEdgeWeights (Graph vs es) = Graph vs (pure updateEdge <*> es)
   where
-    -- updateEdge sets the weight to be the product of the two vertices
     updateEdge (v1, _, v2) = (v1, v1 * v2, v2)
 
 -- Traversing vertices by creating a list of each vertex (demonstrates Foldable behavior)
@@ -133,8 +138,11 @@ testUpdateEdgeWeights = updateEdgeWeights graphEdgesExample
 
 -- edgeTraverse function that traverses edges, applies a user-defined operation to edge weights,
 -- and collapses with a user-defined function
-edgeTraverse :: (Num e) => (e -> e -> e) -> Graph e -> e
-edgeTraverse collapse (Graph _ es) = foldr collapse 1 (map extractEdgeWeight es)
+-- edgeTraverse :: (Num e) => (e -> e -> e) -> Graph e -> e
+-- edgeTraverse collapse (Graph _ es) = foldr collapse 1 (map extractEdgeWeight es)
+--   where
+--     extractEdgeWeight (_, weight, _) = weight
+edgeTraverse collapse (Graph _ es) = foldr collapse 1 (pure extractEdgeWeight <*> es)
   where
     extractEdgeWeight (_, weight, _) = weight
 
@@ -191,3 +199,5 @@ graphPartition gr = solveF choices
     -- Generate choices by traversing edges and calculating adjacency values
     choices :: [[(Int, Int)]]
     choices = traverse (\(v1, weight, v2) -> [(weight, calculateAdjacent (v1, weight, v2))]) (edges gr)
+
+
