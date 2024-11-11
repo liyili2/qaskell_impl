@@ -39,6 +39,9 @@ data Weighted a b =
 foldWeighted :: (a -> b -> r) -> Weighted a b -> r
 foldWeighted f (Weighted w v) = f w v
 
+getWeight :: Weighted a b -> a
+getWeight = foldWeighted (\x _ -> x)
+
 type IntWeighted = Weighted Int
 
 data CompositeSum f a = CompositeSum [f a]
@@ -233,6 +236,38 @@ graphColoring Proxy colors adj = solveF id id choices
       let commonColors = intersect colors1 colors2
       in
       length commonColors
+
+-- (aka set packing)
+maxIndepSet :: forall m. (Foldable m, MonadPlus m) =>
+  Proxy m ->
+  AdjMatrix () ->
+  Int
+maxIndepSet Proxy adj = solveF id negate choices
+  where
+    nodes :: [()]
+    nodes = getNodes adj
+
+    weightChoices :: m [IntWeighted ()]
+    weightChoices = generateChoices 0 1 nodes
+
+    choices :: m (Components AdjMatrix [] Int)
+    choices = fmap components weightChoices
+
+    components :: [IntWeighted ()] -> Components AdjMatrix [] Int
+    components nodeWeights =
+      let adj' :: AdjMatrix (IntWeighted (), IntWeighted ())
+          adj' = updateNodeContents adj nodeWeights
+      in
+      Components
+          -- hA
+        (fmap calcHA adj')
+
+          -- hB
+        (fmap getWeight nodeWeights)
+
+    calcHA (Weighted w1 (), Weighted w2 ()) = w1 * w2
+
+-- threeSatViaMIS :: 
 
 allCombinations :: [a] -> [[a]]
 allCombinations = subsequences
