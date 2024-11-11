@@ -235,7 +235,7 @@ graphColoring Proxy colors adj = solveF id id choices
       length commonColors
 
 allCombinations :: [a] -> [[a]]
-allCombinations = drop 1 . subsequences
+allCombinations = subsequences
 
 allValues :: (Enum a, Bounded a) => [a]
 allValues = [minBound .. maxBound]
