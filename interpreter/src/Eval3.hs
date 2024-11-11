@@ -3,8 +3,10 @@
 module Eval3 where
 
 import Control.Monad
+import Control.Monad.Identity
 
 import Data.Proxy
+import Data.List
 
 import AdjMatrix
 
@@ -39,6 +41,9 @@ foldWeighted f (Weighted w v) = f w v
 
 type IntWeighted = Weighted Int
 
+data CompositeSum f a = CompositeSum [f a]
+  deriving (Functor, Foldable)
+
 ------------------------------------------------------------------------------
 -- We want to create choices at each position in a data structure
 -- and from that, create a choice of data structures.
@@ -49,9 +54,16 @@ type IntWeighted = Weighted Int
 
 generateChoices :: (MonadPlus m, Traversable t) => 
                    Int -> Int -> t a -> m (t (IntWeighted a))
-generateChoices d1 d2 struct =
-    traverse (\a -> return (Weighted d1 a) `mplus` return (Weighted d2 a))
-             struct
+generateChoices d1 d2 struct = generateChoicesFromList [d1, d2] struct
+  -- traverse (\a -> return (Weighted d1 a) `mplus` return (Weighted d2 a))
+  --          struct
+
+generateChoicesFromList :: (MonadPlus m, Traversable t) => 
+                   [b] -> t a -> m (t (Weighted b a))
+generateChoicesFromList ds struct =
+  traverse (\a -> msum (map (go a) ds)) struct
+  where
+    go a d = return (Weighted d a)
 
 data Components s t a =
   Components
@@ -185,6 +197,50 @@ cliqueExists Proxy k adj =
 
     adjacencySumBody (Weighted w1 (), Weighted w2 ()) = w1 * w2
 
+graphColoring :: forall m color. (Eq color, Foldable m, MonadPlus m) =>
+  Proxy m ->
+  [color] ->
+  AdjMatrix () ->
+  Int
+graphColoring Proxy colors adj = solveF id id choices
+  where
+    nodes :: [()]
+    nodes = getNodes adj
+
+    weightChoices :: m [Weighted [color] ()]
+    weightChoices = generateChoicesFromList (allCombinations colors) nodes
+
+    choices :: m (Components [] AdjMatrix Int)
+    choices = fmap components weightChoices
+
+    components :: [Weighted [color] ()] -> Components [] AdjMatrix Int
+    components nodeWeights =
+      let adj' :: AdjMatrix (Weighted [color] (), Weighted [color] ())
+          adj' = updateNodeContents adj nodeWeights
+      in
+      Components
+          -- hA
+        (fmap calcHA nodeWeights)
+
+          -- hB
+        (fmap calcHB adj')
+
+    calcHA :: Weighted [color] () -> Int
+    calcHA (Weighted colors ()) = 1 - length colors
+
+    calcHB :: (Weighted [color] (), Weighted [color] ()) -> Int
+    calcHB (Weighted colors1 (), Weighted colors2 ()) =
+      let commonColors = filter (`elem` colors2) colors1
+      in
+      length commonColors
+
+allCombinations :: [a] -> [[a]]
+allCombinations = drop 1 . subsequences
+
+allValues :: (Enum a, Bounded a) => [a]
+allValues = [minBound .. maxBound]
+
+
 -- NOTE: For instance, you can run this at GHCi:
 -- ghci> eqSum (Proxy @[]) list1
 
@@ -194,6 +250,8 @@ list1 = [1,3,4]
 list2 :: [Int]
 list2 = [2,3,4]
 
+data Color1 = Red | Green | Blue
+  deriving (Enum, Bounded, Show, Eq)
 
 --  A --- B    D
 --  |    /     |
