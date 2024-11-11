@@ -230,7 +230,7 @@ graphColoring Proxy colors adj = solveF id id choices
 
     calcHB :: (Weighted [color] (), Weighted [color] ()) -> Int
     calcHB (Weighted colors1 (), Weighted colors2 ()) =
-      let commonColors = filter (`elem` colors2) colors1
+      let commonColors = intersect colors1 colors2
       in
       length commonColors
 
