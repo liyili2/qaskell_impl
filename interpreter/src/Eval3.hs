@@ -7,6 +7,7 @@ import Control.Monad.Identity
 
 import Data.Proxy
 import Data.List
+import Data.Foldable
 
 import AdjMatrix
 
@@ -267,7 +268,36 @@ maxIndepSet Proxy adj = solveF id negate choices
 
     calcHA (Weighted w1 (), Weighted w2 ()) = w1 * w2
 
--- threeSatViaMIS :: 
+data SatLiteral a = Not a | Id a
+  deriving (Show, Functor, Foldable)
+
+data Conjunct a = Conjunct (SatLiteral a) (SatLiteral a) (SatLiteral a)
+  deriving (Show, Functor, Foldable)
+
+threeSatViaMIS :: forall m a. (Eq a, Foldable m, MonadPlus m) =>
+  Proxy m ->
+  [Conjunct a] ->
+  Int
+threeSatViaMIS Proxy conjuncts =
+    let preparedGraph = go vars
+    in
+    undefined
+  where
+    vars :: [a]
+    vars = nub $ concatMap toList conjuncts
+
+    varIndices :: [(a, Int)]
+    varIndices = map (\x -> (x, unsafeFindIndex x)) vars
+      where
+        unsafeFindIndex x =
+          let Just r = findIndex (== x) vars
+          in
+          r
+
+    -- sortConjunct (Conjunct = undefined
+
+    go [] = undefined
+    go (v:vs) = undefined
 
 allCombinations :: [a] -> [[a]]
 allCombinations = subsequences
