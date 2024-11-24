@@ -29,6 +29,8 @@ library
       Eval2
       Example
       Lib
+      DSL.AdjMatrix
+      DSL.Solve
   other-modules:
       Paths_interpreter
   autogen-modules:

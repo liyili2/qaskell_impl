@@ -1,6 +1,6 @@
 {-# LANGUAGE DeriveFunctor, DeriveFoldable #-}
 
-module AdjMatrix
+module DSL.AdjMatrix
   (AdjMatrix
   ,adjMatrix
   ,completeGraph
