@@ -1,4 +1,5 @@
-{-# LANGUAGE DeriveFunctor, DeriveFoldable #-}
+{-# LANGUAGE DeriveFunctor #-}
+{-# LANGUAGE ScopedTypeVariables #-}
 
 module DSL.Solve
   (Tree (..)
@@ -15,6 +16,7 @@ module DSL.Solve
   where
 
 import Control.Monad
+import Data.Proxy
 
 ------------------------------------------------------------------------------
 -- We are given some traversable data structure. Basic examples include
@@ -84,8 +86,27 @@ square x = x * x
 
 solveF :: (Foldable f, Ord a) =>
   f a -> a
-solveF = foldr1 min
+solveF = minimum
 
 -- listWeights :: Traversable f => f a -> Choices (f (IntWeighted a))
 -- listWeights = generateChoices 1 (-1)
+
+
+---- Examples ----
+
+eqSum :: forall m. (Foldable m, MonadPlus m) =>
+  Proxy m -> -- This is just so that the m is unambiguous, since it isn't used in the rest of the type
+  [Int] ->
+  Int
+eqSum Proxy ns = solveF choices
+  where
+    choices :: m Int
+    choices = fmap components listElementChoices
+
+    listElementChoices :: m [IntWeighted Int]
+    listElementChoices = generateChoices 1 (-1) ns
+
+    components :: [IntWeighted Int] -> Int
+    components weightedElems =
+      sum (map (foldWeighted (*)) weightedElems)
 
