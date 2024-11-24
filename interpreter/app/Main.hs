@@ -5,21 +5,24 @@ import Eval
 
 import Data.Complex
 
+import Control.Monad
+
 import Test.QuickCheck
+import Test.QuickCheck.Gen
 
 main :: IO ()
 main = pure ()
 
-genComplex :: Gen (Complex Double)
-genComplex = liftA2 (:+) genDouble genDouble
+-- genComplex :: Gen (Complex Double)
+-- genComplex = liftA2 (:+) genDouble genDouble
 
-genTensor :: Gen (TensorPower Basic)
-genTensor = do
-  n <- choose (2, 6)
-  replicateM n genDouble
+-- genTensor :: Gen (TensorPower Basic)
+-- genTensor = _ $ do
+--   n <- choose (2, 6)
+--   replicateM n genDouble
 
-prop_equalSum :: Property
-prop_equalSum = do
-  tensor <- genTensor
-  undefined
+-- prop_equalSum :: Property
+-- prop_equalSum = do
+--   tensor <- genTensor
+--   undefined
 
