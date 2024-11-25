@@ -9,6 +9,7 @@ module DSL.Solve
   ,IntWeighted
   ,generateChoices
   ,generateChoicesFromList
+  ,generateChoicesForIsomorphism
   ,sqrtEnergy
   ,energy
   ,solveF
@@ -17,6 +18,8 @@ module DSL.Solve
 
 import Control.Monad
 import Data.Proxy
+import Data.List (permutations)
+import DSL.AdjMatrix
 
 ------------------------------------------------------------------------------
 -- We are given some traversable data structure. Basic examples include
@@ -70,6 +73,12 @@ generateChoicesFromList ds struct =
   traverse (\a -> msum (map (go a) ds)) struct
   where
     go a d = return (Weighted d a)
+
+-- Specialized for graph isomorphism
+generateChoicesForIsomorphism :: (MonadPlus m) => Int -> m [IntWeighted Int]
+generateChoicesForIsomorphism numNodes =
+  let perms = permutations [0 .. numNodes - 1]
+  in msum (map (\perm -> return (zipWith Weighted perm [0 .. numNodes - 1])) perms)
 
 -- Now that we generated all the choices we need to fold over the choices
 -- to choose the "minimum" one or more generally the one(s) satisfying

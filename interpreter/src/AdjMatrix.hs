@@ -12,6 +12,9 @@ module AdjMatrix
 newtype AdjMatrix a = AdjMatrix [[Maybe a]]
   deriving (Functor, Foldable)
 
+instance Traversable AdjMatrix where
+  traverse f (AdjMatrix rows) = fmap AdjMatrix $ traverse (traverse (traverse f)) rows
+  
 adjMatrix :: [[Maybe a]] -> AdjMatrix a
 adjMatrix = AdjMatrix
 

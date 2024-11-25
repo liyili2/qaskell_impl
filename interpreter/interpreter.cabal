@@ -25,12 +25,16 @@ source-repository head
 
 library
   exposed-modules:
+      AdjMatrix
+      DSL.AdjMatrix
+      DSL.Examples
+      DSL.GraphIso
+      DSL.Solve
       Eval
       Eval2
+      Eval3
       Example
       Lib
-      DSL.AdjMatrix
-      DSL.Solve
   other-modules:
       Paths_interpreter
   autogen-modules:
