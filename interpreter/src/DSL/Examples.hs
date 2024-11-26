@@ -6,6 +6,7 @@ module DSL.Examples
   ,graph5
   ,graph6
   ,graph7
+  ,graph8
   )
   where
 

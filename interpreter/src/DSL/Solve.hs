@@ -7,6 +7,7 @@ module DSL.Solve
   ,foldWeighted
   ,getWeight
   ,IntWeighted
+  ,unWeighted
   ,generateChoices
   ,generateChoicesFromList
   ,generateChoicesForIsomorphism
@@ -52,6 +53,9 @@ foldWeighted f (Weighted w v) = f w v
 
 getWeight :: Weighted a b -> a
 getWeight = foldWeighted (\x _ -> x)
+
+unWeighted :: IntWeighted a -> a
+unWeighted (Weighted _ value) = value
 
 type IntWeighted = Weighted Int
 

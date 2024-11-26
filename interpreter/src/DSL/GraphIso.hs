@@ -1,6 +1,7 @@
-
 {-# LANGUAGE RankNTypes #-}
 {-# LANGUAGE ScopedTypeVariables #-}
+
+-- 9. Graph Isomorphisms
 
 module DSL.GraphIso
   (isIsomorphicAdjMatrix)

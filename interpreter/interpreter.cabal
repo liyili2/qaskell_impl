@@ -29,6 +29,7 @@ library
       DSL.AdjMatrix
       DSL.Examples
       DSL.GraphIso
+      DSL.MinSpanTree
       DSL.Solve
       Eval
       Eval2
