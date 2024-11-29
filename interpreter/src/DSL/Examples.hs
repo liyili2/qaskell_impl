@@ -6,7 +6,6 @@ module DSL.Examples
   ,graph5
   ,graph6
   ,graph7
-  ,graph8
   )
   where
 
@@ -194,3 +193,4 @@ graph7 =
         -- A      B        C        D        E
     , [Nothing, Nothing, Just (), Just (), Nothing]
     ]
+
