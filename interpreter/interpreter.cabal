@@ -30,7 +30,6 @@ library
       DSL.Examples
       DSL.GraphIso
       DSL.MinSpanTree
-      DSL.MinSpanTree2
       DSL.Solve
       Eval
       Eval2

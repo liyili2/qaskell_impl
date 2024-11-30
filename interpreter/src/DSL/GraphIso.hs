@@ -12,7 +12,7 @@ import Data.List (permutations, transpose)
 import Data.Foldable (toList)
 import Data.Proxy
 import DSL.AdjMatrix ( AdjMatrix(..), adjMatrix, getNodes, getEdges, complementEdges )
-import DSL.Solve (IntWeighted(..), Weighted(..), solveF, generateChoices, generateChoicesForIsomorphism)
+import DSL.Solve (IntWeighted(..), Weighted(..), solveF, generateChoices)
 
 hA :: Int -> Int -> [IntWeighted Int] -> Int
 hA numNodesG1 numNodesG2 mapping =
@@ -43,7 +43,12 @@ totalH g1 g2 mapping =
       b = 1 -- Weight for H_B
   in a * hA (length $ getNodes g1) (length $ getNodes g2) mapping
      + b * hB g1 g2 mapping
-     
+
+isomorphismStrategy :: MonadPlus m => Int -> [Int] -> m [Weighted Int Int]
+isomorphismStrategy numNodes _ =
+  let perms = permutations [0 .. numNodes - 1]
+  in msum (map (\perm -> return (zipWith Weighted perm [0 .. numNodes - 1])) perms)
+
 -- Main function to return minimum Hamiltonian value
 isIsomorphicAdjMatrix :: forall m a. (Foldable m, MonadPlus m, Eq a) =>
   Proxy m ->          -- Proxy to disambiguate the MonadPlus instance
@@ -59,7 +64,7 @@ isIsomorphicAdjMatrix Proxy g1 g2 =
               else ()
     -- Generate all permutations using MonadPlus
     mappings :: m [IntWeighted Int]
-    mappings = generateChoicesForIsomorphism numNodes
+    mappings = generateChoices (isomorphismStrategy numNodes) [0 .. numNodes - 1]
     -- Compute the Hamiltonian for each mapping
     hamiltonians = map (totalH g1 g2 . toList) (toList mappings)
   in solveF hamiltonians

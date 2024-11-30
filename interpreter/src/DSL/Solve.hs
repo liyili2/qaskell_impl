@@ -9,8 +9,6 @@ module DSL.Solve
   ,IntWeighted
   ,unWeighted
   ,generateChoices
-  ,generateChoicesFromList
-  ,generateChoicesForIsomorphism
   ,sqrtEnergy
   ,energy
   ,solveF
@@ -67,22 +65,29 @@ type IntWeighted = Weighted Int
 -- data structure with a MonadPlus operation representing (weighted) choices.
 -- For now we use integers to represent the weights.
 
-generateChoices :: (MonadPlus m, Traversable t) => 
-                   Int -> Int -> t a -> m (t (IntWeighted a))
-generateChoices d1 d2 struct = generateChoicesFromList [d1, d2] struct
+type ChoiceStrategy m t a b = t a -> m (t (Weighted b a))
 
-generateChoicesFromList :: (MonadPlus m, Traversable t) => 
-                   [b] -> t a -> m (t (Weighted b a))
-generateChoicesFromList ds struct =
-  traverse (\a -> msum (map (go a) ds)) struct
-  where
-    go a d = return (Weighted d a)
+generateChoices :: (MonadPlus m, Traversable t) => 
+                   ChoiceStrategy m t a b -> t a -> m (t (Weighted b a))
+generateChoices strategy struct = strategy struct
+
+
+-- generateChoices :: (MonadPlus m, Traversable t) => 
+--                    Int -> Int -> t a -> m (t (IntWeighted a))
+-- generateChoices d1 d2 struct = generateChoicesFromList [d1, d2] struct
+
+-- generateChoicesFromList :: (MonadPlus m, Traversable t) => 
+--                    [b] -> t a -> m (t (Weighted b a))
+-- generateChoicesFromList ds struct =
+--   traverse (\a -> msum (map (go a) ds)) struct
+--   where
+--     go a d = return (Weighted d a)
 
 -- Specialized for graph isomorphism
-generateChoicesForIsomorphism :: (MonadPlus m) => Int -> m [IntWeighted Int]
-generateChoicesForIsomorphism numNodes =
-  let perms = permutations [0 .. numNodes - 1]
-  in msum (map (\perm -> return (zipWith Weighted perm [0 .. numNodes - 1])) perms)
+-- generateChoicesForIsomorphism :: (MonadPlus m) => Int -> m [IntWeighted Int]
+-- generateChoicesForIsomorphism numNodes =
+--   let perms = permutations [0 .. numNodes - 1]
+--   in msum (map (\perm -> return (zipWith Weighted perm [0 .. numNodes - 1])) perms)
 
 -- Now that we generated all the choices we need to fold over the choices
 -- to choose the "minimum" one or more generally the one(s) satisfying
@@ -107,6 +112,10 @@ solveF = minimum
 
 ---- Examples ----
 
+listStrategy :: (MonadPlus m, Traversable t) => [b] -> ChoiceStrategy m t a b
+listStrategy weights struct =
+  traverse (\a -> msum (map (\w -> return (Weighted w a)) weights)) struct
+
 eqSum :: forall m. (Foldable m, MonadPlus m) =>
   Proxy m -> -- This is just so that the m is unambiguous, since it isn't used in the rest of the type
   [Int] ->
@@ -116,8 +125,9 @@ eqSum Proxy ns = solveF choices
     choices :: m Int
     choices = fmap components listElementChoices
 
+    -- Generate choices using the universal generateChoices with a listStrategy
     listElementChoices :: m [IntWeighted Int]
-    listElementChoices = generateChoices 1 (-1) ns
+    listElementChoices = generateChoices (listStrategy [1, -1]) ns
 
     components :: [IntWeighted Int] -> Int
     components weightedElems =
