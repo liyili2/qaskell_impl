@@ -7,6 +7,7 @@ module DSL.Examples
   ,graph6
   ,graph7
   ,graph8
+  ,graph9
   )
   where
 
@@ -201,3 +202,17 @@ graph8 = AdjMatrix
   [ [Just (), Just ()]
   , [Just (), Nothing]
   ]
+
+  --   0
+  --  / \
+  -- 1---2
+  --  \ /
+  --   3
+graph9 :: AdjMatrix ()
+graph9 = adjMatrix
+  [ [Nothing, Just (), Just (), Nothing]
+  , [Just (), Nothing, Just (), Just ()]
+  , [Just (), Just (), Nothing, Just ()]
+  , [Nothing, Just (), Just (), Nothing]
+  ]
+  
