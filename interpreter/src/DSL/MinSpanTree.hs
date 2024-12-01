@@ -5,7 +5,7 @@ module DSL.MinSpanTree
   (findMinimalTree, computeH, generateTrees) where
 
 import DSL.AdjMatrix (AdjMatrix, getEdges, getNodes)
-import DSL.Solve (generateChoices, Weighted(..), unWeighted, solveF)
+import DSL.Solve (generateChoices, Weighted(..), unWeighted, solveF, ChoiceStrategy, listStrategy)
 import Control.Monad (MonadPlus, msum)
 import Data.Proxy (Proxy(..))
 import Data.List (subsequences)
@@ -72,32 +72,28 @@ lookupDefault key ((k, v):rest) def
     | key == k = v
     | otherwise = lookupDefault key rest def
 
-subsetStrategy :: (MonadPlus m, Traversable t) => [b] -> t a -> m (t (Weighted b a))
-subsetStrategy weights struct =
-  traverse (\a -> msum (map (\w -> return (Weighted w a)) weights)) struct
-  
--- Generate trees with weighted edges and compute H for each configuration
-generateTrees :: (MonadPlus m, Eq a) => Double -> Double -> Int -> AdjMatrix a -> m Double
+subsetStrategy :: (MonadPlus m) => Int -> ChoiceStrategy m [] a [a]
+subsetStrategy maxSize edges = 
+  return $ filter (\s -> length s <= maxSize) (subsequences edges)
+
+generateTrees :: (MonadPlus m, Eq a) => Double -> Double -> Int -> AdjMatrix a -> m [Double]
 generateTrees a b maxDegree adjMatrix = do
     let edges = getEdges adjMatrix
     let n = length (getNodes adjMatrix)
 
-    -- Use subset strategy to generate weighted edges
-    weightedEdges <- generateChoices (subsetStrategy [1, 0]) edges
+    -- Generate all valid subsets of edges using generateChoices
+    treeEdges <- generateChoices (subsetStrategy (n - 1)) edges
 
-    -- Extract the chosen edges from the weighted structure
-    let chosenEdges = map unWeighted weightedEdges
+    -- Generate all possible root nodes using generateChoices
+    roots <- generateChoices (listStrategy [0 .. n - 1]) []
 
-    -- Allow any node to be the root
-    root <- msum (map return [0 .. n - 1])
+    -- Compute the energy for each combination of treeEdges and roots
+    let hValues = [computeH t adjMatrix n maxDegree r a b | t <- treeEdges, r <- roots]
 
-    -- Compute the energy for the current spanning tree and root
-    let h = computeH chosenEdges adjMatrix n maxDegree root a b
-
-    return h
+    return hValues
 
 -- Main function to find the minimal spanning tree
 findMinimalTree :: forall m. (Foldable m, MonadPlus m) =>
   Proxy m -> Int -> AdjMatrix () -> Double
 findMinimalTree Proxy maxDegree adjMatrix =
-    solveF (generateTrees 10 1 maxDegree adjMatrix :: m Double)
+    solveF (fmap minimum (generateTrees 10 1 maxDegree adjMatrix :: m [Double]))

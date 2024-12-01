@@ -12,6 +12,9 @@ module DSL.Solve
   ,sqrtEnergy
   ,energy
   ,solveF
+  ,ChoiceStrategy
+  ,listStrategy
+  ,eqSum
   )
   where
 
@@ -19,6 +22,7 @@ import Control.Monad
 import Data.Proxy
 import Data.List (permutations)
 import DSL.AdjMatrix
+import Lib (Choice(Choice))
 
 ------------------------------------------------------------------------------
 -- We are given some traversable data structure. Basic examples include
@@ -65,12 +69,11 @@ type IntWeighted = Weighted Int
 -- data structure with a MonadPlus operation representing (weighted) choices.
 -- For now we use integers to represent the weights.
 
-type ChoiceStrategy m t a b = t a -> m (t (Weighted b a))
+type ChoiceStrategy m t a b = t a -> m (t b)
 
-generateChoices :: (MonadPlus m, Traversable t) => 
-                   ChoiceStrategy m t a b -> t a -> m (t (Weighted b a))
+generateChoices :: (Monad m, Traversable t) =>
+                   ChoiceStrategy m t a b -> t a -> m (t b)
 generateChoices strategy struct = strategy struct
-
 
 -- generateChoices :: (MonadPlus m, Traversable t) => 
 --                    Int -> Int -> t a -> m (t (IntWeighted a))
@@ -113,23 +116,21 @@ solveF = minimum
 ---- Examples ----
 
 listStrategy :: (MonadPlus m, Traversable t) => [b] -> ChoiceStrategy m t a b
-listStrategy weights struct =
-  traverse (\a -> msum (map (\w -> return (Weighted w a)) weights)) struct
+listStrategy weights struct = traverse (\_ -> msum (map return weights)) struct
 
 eqSum :: forall m. (Foldable m, MonadPlus m) =>
   Proxy m -> -- This is just so that the m is unambiguous, since it isn't used in the rest of the type
-  [Int] ->
-  Int
+  [Int] ->   -- Input list of integers
+  Int        -- The result of summing choices
 eqSum Proxy ns = solveF choices
   where
     choices :: m Int
     choices = fmap components listElementChoices
 
     -- Generate choices using the universal generateChoices with a listStrategy
-    listElementChoices :: m [IntWeighted Int]
+    listElementChoices :: m [Int]
     listElementChoices = generateChoices (listStrategy [1, -1]) ns
 
-    components :: [IntWeighted Int] -> Int
-    components weightedElems =
-      sum (map (foldWeighted (*)) weightedElems)
+    components :: [Int] -> Int
+    components elems = sum elems
 
