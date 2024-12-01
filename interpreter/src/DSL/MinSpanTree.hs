@@ -2,13 +2,13 @@
 {-# LANGUAGE ScopedTypeVariables #-}
 
 module DSL.MinSpanTree
-  (findMinimalTree, computeH, generateTrees) where
+  (findMinimalTree, computeH, generateTrees, subsetStrategy) where
 
 import DSL.AdjMatrix (AdjMatrix, getEdges, getNodes)
-import DSL.Solve (generateChoices, Weighted(..), unWeighted, solveF, ChoiceStrategy, listStrategy)
+import DSL.Solve (generateChoices, Weighted(..), unWeighted, solveF, ChoiceStrategy)
 import Control.Monad (MonadPlus, msum)
 import Data.Proxy (Proxy(..))
-import Data.List (subsequences)
+import Data.List (subsequences, nub)
 
 type Node = Int
 type Edge = (Node, Node)
@@ -73,10 +73,10 @@ lookupDefault key ((k, v):rest) def
     | otherwise = lookupDefault key rest def
 
 subsetStrategy :: (MonadPlus m) => Int -> ChoiceStrategy m [] a [a]
-subsetStrategy maxSize edges = 
-  return $ filter (\s -> length s <= maxSize) (subsequences edges)
+subsetStrategy maxSize edges =
+  return $ filter (\s -> not (null s) && length s <= maxSize) (subsequences edges)
 
-generateTrees :: (MonadPlus m, Eq a) => Double -> Double -> Int -> AdjMatrix a -> m [Double]
+generateTrees :: (MonadPlus m, Eq a) => Double -> Double -> Int -> AdjMatrix a -> m [(Double, [Edge], Node)]
 generateTrees a b maxDegree adjMatrix = do
     let edges = getEdges adjMatrix
     let n = length (getNodes adjMatrix)
@@ -84,16 +84,15 @@ generateTrees a b maxDegree adjMatrix = do
     -- Generate all valid subsets of edges using generateChoices
     treeEdges <- generateChoices (subsetStrategy (n - 1)) edges
 
-    -- Generate all possible root nodes using generateChoices
-    roots <- generateChoices (listStrategy [0 .. n - 1]) []
+    -- Generate all possible root nodes explicitly
+    let roots = [0 .. n - 1]  -- Unique indices for each node
 
-    -- Compute the energy for each combination of treeEdges and roots
-    let hValues = [computeH t adjMatrix n maxDegree r a b | t <- treeEdges, r <- roots]
+    -- Combine each tree with every possible root
+    let results = [(computeH t adjMatrix n maxDegree r a b, t, r) | t <- treeEdges, r <- roots]
+    return results
 
-    return hValues
-
--- Main function to find the minimal spanning tree
 findMinimalTree :: forall m. (Foldable m, MonadPlus m) =>
   Proxy m -> Int -> AdjMatrix () -> Double
 findMinimalTree Proxy maxDegree adjMatrix =
-    solveF (fmap minimum (generateTrees 10 1 maxDegree adjMatrix :: m [Double]))
+    let results = generateTrees 10 1 maxDegree adjMatrix :: m [(Double, [Edge], Node)]
+    in solveF (fmap (minimum . map (\(h, _, _) -> h)) results)

@@ -27,6 +27,7 @@ library
   exposed-modules:
       AdjMatrix
       DSL.AdjMatrix
+      DSL.EqSum
       DSL.Examples
       DSL.GraphIso
       DSL.MinSpanTree

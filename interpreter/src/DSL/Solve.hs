@@ -13,8 +13,6 @@ module DSL.Solve
   ,energy
   ,solveF
   ,ChoiceStrategy
-  ,listStrategy
-  ,eqSum
   )
   where
 
@@ -108,29 +106,3 @@ square x = x * x
 solveF :: (Foldable f, Ord a) =>
   f a -> a
 solveF = minimum
-
--- listWeights :: Traversable f => f a -> Choices (f (IntWeighted a))
--- listWeights = generateChoices 1 (-1)
-
-
----- Examples ----
-
-listStrategy :: (MonadPlus m, Traversable t) => [b] -> ChoiceStrategy m t a b
-listStrategy weights struct = traverse (\_ -> msum (map return weights)) struct
-
-eqSum :: forall m. (Foldable m, MonadPlus m) =>
-  Proxy m -> -- This is just so that the m is unambiguous, since it isn't used in the rest of the type
-  [Int] ->   -- Input list of integers
-  Int        -- The result of summing choices
-eqSum Proxy ns = solveF choices
-  where
-    choices :: m Int
-    choices = fmap components listElementChoices
-
-    -- Generate choices using the universal generateChoices with a listStrategy
-    listElementChoices :: m [Int]
-    listElementChoices = generateChoices (listStrategy [1, -1]) ns
-
-    components :: [Int] -> Int
-    components elems = sum elems
-
