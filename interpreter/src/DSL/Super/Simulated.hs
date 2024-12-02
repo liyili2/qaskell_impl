@@ -34,7 +34,7 @@ import qualified System.Random.MWC as R
 import Data.Ratio
 
 newtype SuperP p a = Super [(p, a)]
-  deriving (Functor)
+  deriving (Functor, Show)
 
 instance Num p => Applicative (SuperP p) where
   pure x = Super [(1, x)]
@@ -55,11 +55,6 @@ instance Num p => Alternative (SuperP p) where
   empty = Super []
   Super xs <|> Super ys = Super (xs ++ ys) -- TODO: Is this correct?
 
-instance Num p => Foldable (SuperP p) where
-  foldMap f (Super xs) =
-    -- TODO: Is this correct?
-    foldMap (f . snd) xs
-
 instance Num p => MonadPlus (SuperP p)
 
 type Prob = Rational
@@ -73,13 +68,22 @@ uniform xs = Super (zip (repeat 1) xs)
 choice :: [(Prob, a)] -> Super a
 choice = Super
 
-send :: Eq a => Super a -> IO a
-send s = do
+send :: Ord a => Super a -> IO a
+send s0 = do
   mwc <- R.create
-  let Super xs = normalize (combineDuplicates s)
-  R.sampleFrom mwc (R.categorical (map (first (fromRational @Double)) xs))
+  let s = normalize (combineDuplicates s0)
+  minimize mwc s
 
 ---- Internally used utility functions: ----
+
+-- | Precondition: Argument should have duplicates combined and it should
+-- be normalized.
+minimize :: Ord a => R.GenIO -> Super a -> IO a
+minimize gen (Super xs) = do
+  let sampleCount = 1 -- 2 ^ length xs
+      dist = R.categorical (map (first (fromRational @Double)) xs)
+
+  fmap minimum (replicateM sampleCount (R.sampleFrom gen dist))
 
 -- TODO: Do we need this?
 combineDuplicates :: (Num p, Eq a) => SuperP p a -> SuperP p a
@@ -100,3 +104,4 @@ normalize (Super xs) =
       probSum = sum probs
   in
   Super (map (first (/ probSum)) xs)
+
