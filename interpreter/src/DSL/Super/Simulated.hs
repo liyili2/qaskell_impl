@@ -4,6 +4,9 @@
 -- we should be able to compile to an actual quantum program.
 --
 -- Based on the probability monad from Tikhon Jelvis' talk here: https://www.youtube.com/watch?v=qZ4O-1VYv4c
+-- That talk, in turn, is based on
+--  - Probabilistic Functional Programming in Haskell by Martin Erwig and Steve Kollmansberger
+--  - Practical Probabilistic Programming with Monads by Adam Scibior, Zoubin Ghahramani and Andrew D. Gordon
 
 {-# LANGUAGE TupleSections #-}
 
