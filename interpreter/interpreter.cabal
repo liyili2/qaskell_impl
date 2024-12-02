@@ -44,9 +44,11 @@ library
   hs-source-dirs:
       src
   ghc-options: -Wall -Wcompat -Widentities -Wincomplete-record-updates -Wincomplete-uni-patterns -Wmissing-export-lists -Wmissing-home-modules -Wpartial-fields -Wredundant-constraints
+  default-extensions: DeriveFunctor, DeriveFoldable
   build-depends:
       QuickCheck >=2.14
     , base >=4.7 && <5
+    , mtl
   default-language: Haskell2010
 
 executable interpreter-exe
