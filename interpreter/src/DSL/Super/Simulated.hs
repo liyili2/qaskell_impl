@@ -71,6 +71,14 @@ uniform xs = Super (zip (repeat 1) xs)
 choice :: [(Prob, a)] -> Super a
 choice = Super
 
+send :: Eq a => Super a -> IO a
+send s = do
+  mwc <- R.create
+  let Super xs = normalize (combineDuplicates s)
+  R.sampleFrom mwc (R.categorical (map (first (fromRational @Double)) xs))
+
+---- Internally used utility functions: ----
+
 -- TODO: Do we need this?
 combineDuplicates :: (Num p, Eq a) => SuperP p a -> SuperP p a
 combineDuplicates (Super xs) =
@@ -90,10 +98,3 @@ normalize (Super xs) =
       probSum = sum probs
   in
   Super (map (first (/ probSum)) xs)
-
-send :: Eq a => Super a -> IO a
-send s = do
-  mwc <- R.create
-  let Super xs = normalize (combineDuplicates s)
-  R.sampleFrom mwc (R.categorical (map (first (fromRational @Double)) xs))
-
