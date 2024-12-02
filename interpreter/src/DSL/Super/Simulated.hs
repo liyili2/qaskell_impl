@@ -68,10 +68,11 @@ uniform xs = Super (zip (repeat 1) xs)
 choice :: [(Prob, a)] -> Super a
 choice = Super
 
-send :: Ord a => Super a -> IO a
+send :: (Show a, Ord a) => Super a -> IO a
 send s0 = do
-  mwc <- R.create
+  mwc <- R.createSystemRandom
   let s = normalize (combineDuplicates s0)
+  print s
   minimize mwc s
 
 ---- Internally used utility functions: ----
@@ -80,7 +81,7 @@ send s0 = do
 -- be normalized.
 minimize :: Ord a => R.GenIO -> Super a -> IO a
 minimize gen (Super xs) = do
-  let sampleCount = 1 -- 2 ^ length xs
+  let sampleCount = 2 ^ length xs
       dist = R.categorical (map (first (fromRational @Double)) xs)
 
   fmap minimum (replicateM sampleCount (R.sampleFrom gen dist))
