@@ -12,11 +12,17 @@ import DSL.Solve (solveF, generateChoices, ChoiceStrategy)
 listStrategy :: (MonadPlus m, Traversable t) => [b] -> ChoiceStrategy m t a b
 listStrategy weights struct = traverse (\_ -> msum (map return weights)) struct
 
-eqSum :: forall m. (Foldable m, MonadPlus m) =>
+-- Example usage:
+--   ghci> minimum (eqSum (Proxy @[]) [1,2,3,4,5]
+--   1
+--   ghci> send (eqSum (Proxy @Super) [1,2,3,4,5]
+--   1
+
+eqSum :: forall m. (MonadPlus m) =>
   Proxy m -> -- To disambiguate the MonadPlus instance
   [Int] ->   -- Input list of integers
-  Int        -- Result of computation
-eqSum Proxy ns = solveF energies
+  m Int      -- Result of computation
+eqSum Proxy ns = energies
   where
     -- Generate all choices using the universal generateChoices
     choices :: m [Int]
