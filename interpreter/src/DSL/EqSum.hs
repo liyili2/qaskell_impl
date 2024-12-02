@@ -13,9 +13,9 @@ listStrategy :: (MonadPlus m, Traversable t) => [b] -> ChoiceStrategy m t a b
 listStrategy weights struct = traverse (\_ -> msum (map return weights)) struct
 
 -- Example usage:
---   ghci> minimum (eqSum (Proxy @[]) [1,2,3,4,5]
+--   ghci> minimum (eqSum (Proxy @[]) [1,2,3,4,5])
 --   1
---   ghci> send (eqSum (Proxy @Super) [1,2,3,4,5]
+--   ghci> send (eqSum (Proxy @Super) [1,2,3,4,5])
 --   1
 
 eqSum :: forall m. (MonadPlus m) =>
