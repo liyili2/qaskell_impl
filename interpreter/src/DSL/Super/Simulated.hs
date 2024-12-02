@@ -68,11 +68,10 @@ uniform xs = Super (zip (repeat 1) xs)
 choice :: [(Prob, a)] -> Super a
 choice = Super
 
-send :: (Show a, Ord a) => Super a -> IO a
+send :: (Ord a) => Super a -> IO a
 send s0 = do
   mwc <- R.createSystemRandom
   let s = normalize (combineDuplicates s0)
-  print s
   minimize mwc s
 
 ---- Internally used utility functions: ----
