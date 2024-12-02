@@ -2,6 +2,8 @@
 -- 
 -- Idea: If we only access this through the interface exposed by the module, then
 -- we should be able to compile to an actual quantum program.
+--
+-- Based on the probability monad from Tikhon Jelvis' talk here: https://www.youtube.com/watch?v=qZ4O-1VYv4c
 
 {-# LANGUAGE TupleSections #-}
 
