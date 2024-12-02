@@ -44,10 +44,16 @@ library
       Paths_interpreter
   hs-source-dirs:
       src
+  default-extensions:
+      DeriveFoldable
+      DeriveFunctor
   ghc-options: -Wall -Wcompat -Widentities -Wincomplete-record-updates -Wincomplete-uni-patterns -Wmissing-export-lists -Wmissing-home-modules -Wpartial-fields -Wredundant-constraints
   build-depends:
       QuickCheck >=2.14
     , base >=4.7 && <5
+    , mtl
+    , mwc-random
+    , random-fu
   default-language: Haskell2010
 
 executable interpreter-exe
@@ -58,11 +64,17 @@ executable interpreter-exe
       Paths_interpreter
   hs-source-dirs:
       app
+  default-extensions:
+      DeriveFoldable
+      DeriveFunctor
   ghc-options: -Wall -Wcompat -Widentities -Wincomplete-record-updates -Wincomplete-uni-patterns -Wmissing-export-lists -Wmissing-home-modules -Wpartial-fields -Wredundant-constraints -threaded -rtsopts -with-rtsopts=-N
   build-depends:
       QuickCheck >=2.14
     , base >=4.7 && <5
     , interpreter
+    , mtl
+    , mwc-random
+    , random-fu
   default-language: Haskell2010
 
 test-suite interpreter-test
@@ -74,9 +86,15 @@ test-suite interpreter-test
       Paths_interpreter
   hs-source-dirs:
       test
+  default-extensions:
+      DeriveFoldable
+      DeriveFunctor
   ghc-options: -Wall -Wcompat -Widentities -Wincomplete-record-updates -Wincomplete-uni-patterns -Wmissing-export-lists -Wmissing-home-modules -Wpartial-fields -Wredundant-constraints -threaded -rtsopts -with-rtsopts=-N
   build-depends:
       QuickCheck >=2.14
     , base >=4.7 && <5
     , interpreter
+    , mtl
+    , mwc-random
+    , random-fu
   default-language: Haskell2010

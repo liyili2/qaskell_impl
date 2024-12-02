@@ -22,6 +22,9 @@ description:         Please see the README on GitHub at <https://github.com/gith
 dependencies:
 - base >= 4.7 && < 5
 - QuickCheck >= 2.14
+- random-fu
+- mwc-random
+- mtl
 
 ghc-options:
 - -Wall
@@ -33,6 +36,10 @@ ghc-options:
 - -Wmissing-home-modules
 - -Wpartial-fields
 - -Wredundant-constraints
+
+default-extensions:
+- DeriveFoldable
+- DeriveFunctor
 
 library:
   source-dirs: src

@@ -9,6 +9,8 @@
 --  - Practical Probabilistic Programming with Monads by Adam Scibior, Zoubin Ghahramani and Andrew D. Gordon
 
 {-# LANGUAGE TupleSections #-}
+{-# LANGUAGE TypeApplications #-}
+{-# LANGUAGE ScopedTypeVariables #-}
 
 module DSL.Super.Simulated
     (Super
