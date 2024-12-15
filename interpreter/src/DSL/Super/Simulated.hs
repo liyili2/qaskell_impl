@@ -11,14 +11,15 @@
 {-# LANGUAGE TupleSections #-}
 {-# LANGUAGE TypeApplications #-}
 {-# LANGUAGE ScopedTypeVariables #-}
+{-# LANGUAGE GADTs #-}
 
 module DSL.Super.Simulated
-    (Super
-    ,Prob
-    ,uniform
-    ,choice
-    ,send
-    )
+    -- (Super
+    -- ,Prob
+    -- ,uniform
+    -- ,choice
+    -- ,send
+    -- )
   where
 
 import Data.Complex
@@ -33,8 +34,36 @@ import qualified System.Random.MWC as R
 
 import Data.Ratio
 
+import Prettyprinter
+import Data.List
+
+import DSL.Utils
+
+-- import Control.Monad.Free
+
+-- data SuperP p a where
+--   Uniform :: [a] -> SuperP p a
+--   Choice :: [(p, a)] -> SuperP p a
+
 newtype SuperP p a = Super [(p, a)]
   deriving (Functor, Show)
+
+scalarMultPrecedence :: Int
+scalarMultPrecedence = 1
+
+vectorSumPrecedence :: Int
+vectorSumPrecedence = scalarMultPrecedence
+
+instance (Nesting p, Nesting a) => Pretty (SuperP p a) where
+  pretty (Super []) = pretty "0"
+  pretty (Super xs) =
+      hsep $ intersperse (pretty "+") $ map prettyScalarMult xs
+    where
+      prettyScalarMult (p, a) =
+        prettyNested scalarMultPrecedence p <+> prettyNested scalarMultPrecedence a
+
+instance (Nesting p, Nesting a) => Nesting (SuperP p a) where
+  prettyNested prec = parensWhen (prec < vectorSumPrecedence) . pretty
 
 instance Num p => Applicative (SuperP p) where
   pure x = Super [(1, x)]

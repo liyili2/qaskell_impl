@@ -25,6 +25,8 @@ dependencies:
 - random-fu
 - mwc-random
 - mtl
+- free
+- prettyprinter
 
 ghc-options:
 - -Wall
