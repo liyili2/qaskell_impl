@@ -1,3 +1,5 @@
+{-# LANGUAGE GeneralizedNewtypeDeriving #-}
+
 module DSL.Tensor
   where
 
@@ -9,7 +11,7 @@ import DSL.Utils
 import DSL.Super.Simulated
 
 newtype Tensor a = Tensor [a]
-  deriving (Show)
+  deriving (Show, Functor, Applicative)
 
 tensorPrecedence :: Int
 tensorPrecedence = 2

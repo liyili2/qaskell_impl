@@ -30,6 +30,7 @@ library
       DSL.EqSum
       DSL.Examples
       DSL.GraphIso
+      DSL.LowLevel
       DSL.MinSpanTree
       DSL.Solve
       DSL.Super.Simulated
