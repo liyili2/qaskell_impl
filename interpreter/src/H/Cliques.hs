@@ -1,27 +1,32 @@
-module H.GraphPartition
-    ( graphPartitionH
-    , testGraphPartitionH
+module H.Cliques
+    ( cliquesH
+    , testCliquesH
     ) where
 
 import H.FunctionalSimulator (generateSpins, solveHamiltonians, findMinimum, simulateClassical, simulateQuantum, suggestT)
 
--- Define the Hamiltonian for the graph partitioning problem
-graphPartitionH :: [(Int, Int)] -> [Int] -> Double
-graphPartitionH edges spins =
-  let -- First term: size constraint
-      term1 = fromIntegral $ sum spins ^ 2
-      -- Second term: edge penalty
-      term2 = sum [ (1 - fromIntegral (spins !! u * spins !! v)) / 2 | (u, v) <- edges ]
+-- Define the Hamiltonian for the clique problem
+cliquesH :: [(Int, Int)] -> Int -> [Int] -> Double
+cliquesH edges k spins =
+  let -- First term: Enforce clique size
+      term1 = fromIntegral $ (k - sum spins) ^ 2
+
+      -- Second term: Enforce clique completeness
+      term2 = fromIntegral $ (k * (k - 1)) `div` 2 - sum [spins !! u * spins !! v | (u, v) <- edges]
+
       -- Weights for terms
+      a, b :: Double
       a = 1.0
       b = 1.0
   in a * term1 + b * term2
 
-testGraphPartitionH :: IO ()
-testGraphPartitionH = do
-  let edges = [(0, 1), (1, 2), (2, 3), (3, 0), (0, 2)] -- Example graph (a square with a diagonal)
+-- Test the clique Hamiltonian with FunctionalSimulator
+testCliquesH :: IO ()
+testCliquesH = do
+  let edges = [(0, 1), (1, 2), (2, 3), (3, 0), (0, 2)] -- Example graph (square with a diagonal)
   let numVertices = 4
-  let hamiltonian spins = graphPartitionH edges spins
+  let k = 3 -- Desired clique size
+  let hamiltonian spins = cliquesH edges k spins
   let shots = 1024
   let numSteps = 100
 

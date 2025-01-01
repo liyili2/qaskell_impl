@@ -3,7 +3,7 @@ module H.NumberPartition
     , testNumberPartitionH
     ) where
 
-import H.Simulator
+import H.FunctionalSimulator (generateSpins, solveHamiltonians, findMinimum, simulateClassical, simulateQuantum, suggestT)
 
 -- Define the Hamiltonian for the number partitioning problem
 numberPartitionH :: [Int] -> [Int] -> Double
@@ -15,25 +15,27 @@ testNumberPartitionH :: IO ()
 testNumberPartitionH = do
   let numbers = [3, 1, 4, 2, 2]
   let numSpins = length numbers
-  let hamiltonian = numberPartitionH numbers
+  let hamiltonian spins = numberPartitionH numbers spins
+  let shots = 1024
+  let numSteps = 100
 
-  -- Define continuations
+  -- Suggest optimal t based on energy gap
   let onError err = error ("Error in suggestT: " ++ err)
   let onSuccess optimalT = optimalT
-
-  -- Suggest optimal t
   let optimalT = suggestT numSpins hamiltonian onError onSuccess
   putStrLn $ "Suggested optimal t: " ++ show optimalT
 
-  -- Define the simulator
-  let simulator = Simulator numSpins hamiltonian
+  -- Generate spin configurations
+  let spins = generateSpins numSpins
 
-  -- Run the classical simulation
-  let (bestConfigClassical, bestEnergyClassical) = classical simulator
-  putStrLn $ "Classical Result: " ++ show bestConfigClassical ++ ", Energy: " ++ show bestEnergyClassical
+  -- Run classical simulation
+  putStrLn "Running classical simulation..."
+  classicalResults <- solveHamiltonians (simulateClassical hamiltonian) numSpins
+  let classicalMin = findMinimum classicalResults
+  putStrLn $ "Classical Result: Configuration: " ++ show (snd classicalMin) ++ ", Energy: " ++ show (fst classicalMin)
 
-  -- Quantum simulation
-  let shots = 1024
-  let numSteps = 100
-  (bestConfigQuantum, bestEnergyQuantum) <- quantum simulator optimalT shots numSteps
-  putStrLn $ "Quantum Result: " ++ show bestConfigQuantum ++ ", Energy: " ++ show bestEnergyQuantum
+  -- Run quantum simulation
+  putStrLn "Running quantum simulation..."
+  quantumResults <- solveHamiltonians (\spins -> simulateQuantum hamiltonian optimalT shots spins numSteps) numSpins
+  let quantumMin = findMinimum quantumResults
+  putStrLn $ "Quantum Result: Configuration: " ++ show (snd quantumMin) ++ ", Energy: " ++ show (fst quantumMin)
