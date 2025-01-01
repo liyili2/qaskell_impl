@@ -24,19 +24,16 @@ testNumberPartitionH = do
   -- Suggest optimal t
   let optimalT = suggestT numSpins hamiltonian onError onSuccess
   putStrLn $ "Suggested optimal t: " ++ show optimalT
-  
+
   -- Define the simulator
   let simulator = Simulator numSpins hamiltonian
-  
+
   -- Run the classical simulation
-  let (bestConfig, bestEnergy) = classical simulator
+  let (bestConfigClassical, bestEnergyClassical) = classical simulator
+  putStrLn $ "Classical Result: " ++ show bestConfigClassical ++ ", Energy: " ++ show bestEnergyClassical
 
-  -- Print the results
-  putStrLn $ show bestConfig ++ ", " ++ show bestEnergy
-
-    -- Quantum simulation
+  -- Quantum simulation
   let shots = 1024
-  (bestConfig, bestEnergy) <- quantum (Simulator numSpins hamiltonian) optimalT shots
-  
-  -- Print the results
-  putStrLn $ show bestConfig ++ ", " ++ show bestEnergy
+  let numSteps = 100
+  (bestConfigQuantum, bestEnergyQuantum) <- quantum simulator optimalT shots numSteps
+  putStrLn $ "Quantum Result: " ++ show bestConfigQuantum ++ ", Energy: " ++ show bestEnergyQuantum

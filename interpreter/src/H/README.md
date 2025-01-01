@@ -5,6 +5,8 @@ Hamiltonians and Simulator are being translated from the following Python Jupyte
 
         20241215_Ising_Hamiltonians.ipynb
 
+        20241224_Hamiltonian_Simulator.ipynb
+
 Load necessary packages
 
         ghci> :set -package containers

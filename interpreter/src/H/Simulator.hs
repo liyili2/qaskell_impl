@@ -47,21 +47,46 @@ hamiltonianMatrix (Simulator numSpins hamiltonian) numStates =
 timeEvolution :: [Complex Double] -> Double -> [Complex Double]
 timeEvolution hMatrix t = [cis (-energy * t) | energy <- map realPart hMatrix]
 
+-- Interpolate between the initial and final Hamiltonians
+interpolateHamiltonian :: [Complex Double] -> [Complex Double] -> Double -> [Complex Double]
+interpolateHamiltonian hInitial hFinal s =
+  zipWith (\hi hf -> ((1 :+ 0) - (s :+ 0)) * hi + (s :+ 0) * hf) hInitial hFinal
+
 -- Evolve the state vector
 evolveState :: [Complex Double] -> [Complex Double] -> [Complex Double]
 evolveState u state = zipWith (*) u state
 
--- Quantum simulation function
-quantum :: Simulator -> Double -> Int -> IO ([Int], Double)
-quantum sim t shots = do
+-- Quantum simulation function with time evolution
+quantum :: Simulator -> Double -> Int -> Int -> IO ([Int], Double)
+quantum sim totalTime shots numSteps = do
   let numStates = 2 ^ n sim
-  let hMatrix = hamiltonianMatrix sim numStates
+  let hFinal = hamiltonianMatrix sim numStates
+  
+  -- Construct initial Hamiltonian (transverse field)
+  let hInitial = replicate numStates 0.0 ++ repeat ((-1.0) :+ 0.0)
+  
+  -- Initial state: equal superposition
   let initialState = replicate numStates (1 / sqrt (fromIntegral numStates) :+ 0)
-  let u = timeEvolution hMatrix t
-  let evolvedState = evolveState u initialState
+  
+  -- Time step for evolution
+  let dt = totalTime / fromIntegral numSteps
+
+  -- Perform adiabatic evolution
+  let evolveStep state t = 
+        let s = t / totalTime
+            hT = interpolateHamiltonian hInitial hFinal s
+            u = timeEvolution hT dt
+        in evolveState u state
+  
+  -- Iterate over time steps
+  let evolvedState = foldl evolveStep initialState [dt, 2*dt .. totalTime]
+  
+  -- Compute probabilities of outcomes
   let probabilities = map (\c -> magnitude c ** 2) evolvedState
   outcomes <- replicateM shots $ weightedChoice probabilities
   let counts = frequency outcomes
+  
+  -- Calculate energies for each observed state
   let energies = [(config, h sim (toSpins config)) | config <- map fst counts]
   let (bestConfig, bestEnergy) = minimumBy (comparing snd) energies
   return (toSpins bestConfig, bestEnergy)

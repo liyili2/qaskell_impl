@@ -30,15 +30,16 @@ testGraphPartitionH = do
   -- Suggest optimal t
   let optimalT = suggestT numVertices hamiltonian onError onSuccess
   putStrLn $ "Suggested optimal t: " ++ show optimalT
-  
+
   -- Define the simulator
   let simulator = Simulator numVertices hamiltonian
-  
+
   -- Run the classical simulation
-  let (bestConfig, bestEnergy) = classical simulator
-  putStrLn $ "Classical Result: " ++ show bestConfig ++ ", " ++ show bestEnergy
+  let (bestConfigClassical, bestEnergyClassical) = classical simulator
+  putStrLn $ "Classical Result: " ++ show bestConfigClassical ++ ", Energy: " ++ show bestEnergyClassical
 
   -- Quantum simulation
   let shots = 1024
-  (bestConfigQ, bestEnergyQ) <- quantum simulator optimalT shots
-  putStrLn $ "Quantum Result: " ++ show bestConfigQ ++ ", " ++ show bestEnergyQ
+  let numSteps = 100
+  (bestConfigQuantum, bestEnergyQuantum) <- quantum simulator optimalT shots numSteps
+  putStrLn $ "Quantum Result: " ++ show bestConfigQuantum ++ ", Energy: " ++ show bestEnergyQuantum
