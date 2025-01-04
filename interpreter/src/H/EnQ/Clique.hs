@@ -1,4 +1,4 @@
-module H.Trav.Clique where
+module H.EnQ.Clique where
 
 import Numeric.LinearAlgebra (Matrix, Vector, atIndex, (#>), (><), fromLists, toLists, ident, cmap, sumElements, diagl, tr, expm, rows, cols)
 import Numeric.LinearAlgebra.Data (fromList, scalar, toList)

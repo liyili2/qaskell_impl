@@ -1,4 +1,4 @@
-module H.Fn.NumberPartition
+module H.Comp.NumberPartition
     ( numberPartitionH
     , testNumberPartitionH
     ) where
