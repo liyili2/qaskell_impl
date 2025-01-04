@@ -1,4 +1,6 @@
-# Hamiltonians and simple Simulator
+# Hamiltonians
+
+## /notebooks
 
 Hamiltonians and Simulator are being translated from the following Python Jupyter notebook, also authored by JBG:
 
@@ -7,20 +9,23 @@ Hamiltonians and Simulator are being translated from the following Python Jupyte
 
         20241224_Hamiltonian_Simulator.ipynb
 
-Load necessary packages
+## /Imp (imparative)
 
-        ghci> :set -package containers
+Pretty much a direct Haskell translation of the Python code in the notebooks. "Imp" is short for "imperative", it's not imperative, but the pattern more or less "feels" that way.
 
-        ghci> :set -package random
+## /Fn (functional)
 
-Load Simulator:
+An iteration of the `/Imp` Solver, "Fn" for functional, but in a similar functional pipeline pattern of what is in DSL. Meaning:
 
-        ghci> :l H.Simulator 
+`minimize` ◦ `solve_` ◦ `generateSpins`
 
-Run test functions:
+However, only really works equally well for both classical and quantum versions, where the Hamiltonian in the quantum case results in a diagonalized matrix.
 
-        ghci> :l H.NumberPartition 
-        ghci> testNumberPartitionH
+## /Trav (traverable)
 
-        ghci> :l H.GraphPartition
-        ghci> testGraphPartitionH
+This is a take on the generate choices pattern also in `/DSL`. Ideally no big departure here.
+
+`minimize` ◦ `solve_` ◦ `generateChoices`
+
+In all cases `solve_` means either `solveClassical` or `solveQuantum`.
+

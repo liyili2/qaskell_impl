@@ -1,10 +1,10 @@
-module H.FunctionalSimulator
+module H.Fn.Solver
     ( generateSpins
     , solveHamiltonians
     , findMinimum
-    , simulateClassical
-    , simulateQuantum
-    , testFunctionalSimulator
+    , solveClassical
+    , solveQuantum
+    , testSolver
     , suggestT
     ) where
 
@@ -32,14 +32,14 @@ findMinimum :: [(Double, [Int])] -> (Double, [Int])
 findMinimum = minimumBy (comparing fst)
 
 -- Classical solver
-simulateClassical :: ([Int] -> Double) -> [[Int]] -> IO [(Double, [Int])]
-simulateClassical hamiltonian spins = do
+solveClassical :: ([Int] -> Double) -> [[Int]] -> IO [(Double, [Int])]
+solveClassical hamiltonian spins = do
     let energies = [(hamiltonian s, s) | s <- spins]
     return energies
 
 -- Quantum solver with time evolution
-simulateQuantum :: ([Int] -> Double) -> Double -> Int -> [[Int]] -> Int -> IO [(Double, [Int])]
-simulateQuantum hamiltonian totalTime shots spins numSteps = do
+solveQuantum :: ([Int] -> Double) -> Double -> Int -> [[Int]] -> Int -> IO [(Double, [Int])]
+solveQuantum hamiltonian totalTime shots spins numSteps = do
     let numStates = length spins
 
     -- Initial Hamiltonian (H_B): Transverse field
@@ -106,8 +106,8 @@ suggestT numSpins hamiltonian onError onSuccess =
               then onError "Zero energy gap detected."
               else onSuccess (1 / deltaE)
 
-testFunctionalSimulator :: IO ()
-testFunctionalSimulator = do
+testSolver :: IO ()
+testSolver = do
     let numSpins = 4
     let hamiltonian spins = fromIntegral (sum spins ^ 2)  -- Example Hamiltonian
     let t = 1.0
@@ -116,7 +116,7 @@ testFunctionalSimulator = do
 
     -- Run classical simulation
     let spins = generateSpins numSpins
-    classicalResults <- solveHamiltonians (simulateClassical hamiltonian) numSpins
+    classicalResults <- solveHamiltonians (solveClassical hamiltonian) numSpins
     let classicalMin = findMinimum classicalResults
     putStrLn $ "Classical Minimum: " ++ show classicalMin
 
@@ -128,6 +128,6 @@ testFunctionalSimulator = do
 
     -- Run quantum simulation
     putStrLn "Running quantum simulation..."
-    quantumResults <- solveHamiltonians (\spins -> simulateQuantum hamiltonian optimalT shots spins numSteps) numSpins
+    quantumResults <- solveHamiltonians (\spins -> solveQuantum hamiltonian optimalT shots spins numSteps) numSpins
     let quantumMin = findMinimum quantumResults
     putStrLn $ "Quantum Minimum: Configuration: " ++ show (snd quantumMin) ++ ", Energy: " ++ show (fst quantumMin)

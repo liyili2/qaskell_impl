@@ -1,7 +1,7 @@
 {-# LANGUAGE RankNTypes #-}
 
-module H.Simulator
-  ( Simulator(..)
+module H.Imp.Solver
+  ( Solver(..)
   , classical
   , quantum
   , suggestT
@@ -15,8 +15,7 @@ import Data.Set (fromList, toAscList)
 import System.Random (randomRIO)
 import Control.Monad (replicateM)
 
--- Define the Simulator type
-data Simulator = Simulator
+data Solver = Solver
   { n :: Int -- Number of spins
   , h :: [Int] -> Double -- Hamiltonian function
   }
@@ -28,16 +27,16 @@ generateSpins numSpins = map toSpins [0 .. (1 `shiftL` numSpins) - 1 :: Int]
     toSpins :: Int -> [Int]
     toSpins config = [if testBit config i then 1 else -1 | i <- [0 .. numSpins - 1]]
 
--- Classical simulation function
-classical :: Simulator -> ([Int], Double)
-classical (Simulator numSpins hamiltonian) =
+-- Classical function
+classical :: Solver -> ([Int], Double)
+classical (Solver numSpins hamiltonian) =
   let spinConfigs = generateSpins numSpins
       energies = [(spins, hamiltonian spins) | spins <- spinConfigs]
   in minimumBy (comparing snd) energies
 
 -- Define the Hamiltonian matrix as a diagonal matrix
-hamiltonianMatrix :: Simulator -> Int -> [Complex Double]
-hamiltonianMatrix (Simulator numSpins hamiltonian) numStates =
+hamiltonianMatrix :: Solver -> Int -> [Complex Double]
+hamiltonianMatrix (Solver numSpins hamiltonian) numStates =
   [realToFrac (hamiltonian spins) :+ 0 | spins <- generateSpins numSpins]
   where
     spinsForConfig config = [if testBit config i then 1 else -1 | i <- [0 .. numSpins - 1]]
@@ -56,8 +55,8 @@ interpolateHamiltonian hInitial hFinal s =
 evolveState :: [Complex Double] -> [Complex Double] -> [Complex Double]
 evolveState u state = zipWith (*) u state
 
--- Quantum simulation function with time evolution
-quantum :: Simulator -> Double -> Int -> Int -> IO ([Int], Double)
+-- Quantum function with time evolution
+quantum :: Solver -> Double -> Int -> Int -> IO ([Int], Double)
 quantum sim totalTime shots numSteps = do
   let numStates = 2 ^ n sim
   let hFinal = hamiltonianMatrix sim numStates

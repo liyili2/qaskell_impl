@@ -27,6 +27,7 @@ dependencies:
 - mtl
 - free
 - prettyprinter
+- hmatrix
 
 ghc-options:
 - -Wall

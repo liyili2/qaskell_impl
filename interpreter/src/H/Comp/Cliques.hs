@@ -1,9 +1,9 @@
-module H.Cliques
+module H.Fn.Cliques
     ( cliquesH
     , testCliquesH
     ) where
 
-import H.FunctionalSimulator (generateSpins, solveHamiltonians, findMinimum, simulateClassical, simulateQuantum, suggestT)
+import H.Fn.Solver (generateSpins, solveHamiltonians, findMinimum, solveClassical, solveQuantum, suggestT)
 
 -- Define the Hamiltonian for the clique problem
 cliquesH :: [(Int, Int)] -> Int -> [Int] -> Double
@@ -41,12 +41,12 @@ testCliquesH = do
 
   -- Run classical simulation
   putStrLn "Running classical simulation..."
-  classicalResults <- solveHamiltonians (simulateClassical hamiltonian) numVertices
+  classicalResults <- solveHamiltonians (solveClassical hamiltonian) numVertices
   let classicalMin = findMinimum classicalResults
   putStrLn $ "Classical Result: Configuration: " ++ show (snd classicalMin) ++ ", Energy: " ++ show (fst classicalMin)
 
   -- Run quantum simulation
   putStrLn "Running quantum simulation..."
-  quantumResults <- solveHamiltonians (\spins -> simulateQuantum hamiltonian optimalT shots spins numSteps) numVertices
+  quantumResults <- solveHamiltonians (\spins -> solveQuantum hamiltonian optimalT shots spins numSteps) numVertices
   let quantumMin = findMinimum quantumResults
   putStrLn $ "Quantum Result: Configuration: " ++ show (snd quantumMin) ++ ", Energy: " ++ show (fst quantumMin)

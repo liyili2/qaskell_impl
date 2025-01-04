@@ -1,9 +1,9 @@
-module H.NumberPartition
+module H.Fn.NumberPartition
     ( numberPartitionH
     , testNumberPartitionH
     ) where
 
-import H.FunctionalSimulator (generateSpins, solveHamiltonians, findMinimum, simulateClassical, simulateQuantum, suggestT)
+import H.Fn.Solver (generateSpins, solveHamiltonians, findMinimum, solveClassical, solveQuantum, suggestT)
 
 -- Define the Hamiltonian for the number partitioning problem
 numberPartitionH :: [Int] -> [Int] -> Double
@@ -30,12 +30,12 @@ testNumberPartitionH = do
 
   -- Run classical simulation
   putStrLn "Running classical simulation..."
-  classicalResults <- solveHamiltonians (simulateClassical hamiltonian) numSpins
+  classicalResults <- solveHamiltonians (solveClassical hamiltonian) numSpins
   let classicalMin = findMinimum classicalResults
   putStrLn $ "Classical Result: Configuration: " ++ show (snd classicalMin) ++ ", Energy: " ++ show (fst classicalMin)
 
   -- Run quantum simulation
   putStrLn "Running quantum simulation..."
-  quantumResults <- solveHamiltonians (\spins -> simulateQuantum hamiltonian optimalT shots spins numSteps) numSpins
+  quantumResults <- solveHamiltonians (\spins -> solveQuantum hamiltonian optimalT shots spins numSteps) numSpins
   let quantumMin = findMinimum quantumResults
   putStrLn $ "Quantum Result: Configuration: " ++ show (snd quantumMin) ++ ", Energy: " ++ show (fst quantumMin)
