@@ -1,9 +1,9 @@
-module H.Comp.NumberPartition
+module H.EnQ.Ising.NumberPartition
     ( numberPartitionH
     , testNumberPartitionH
     ) where
 
-import H.Fn.Solver (generateSpins, solveHamiltonians, findMinimum, solveClassical, solveQuantum, suggestT)
+import H.EnQ.Ising.Ising (generateSpins, solveHamiltonians, findMinimum, solveClassical, solveQuantum, suggestT)
 
 -- Define the Hamiltonian for the number partitioning problem
 numberPartitionH :: [Int] -> [Int] -> Double

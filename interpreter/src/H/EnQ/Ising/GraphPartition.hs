@@ -1,9 +1,9 @@
-module H.Comp.GraphPartition
+module H.EnQ.Ising.GraphPartition
     ( graphPartitionH
     , testGraphPartitionH
     ) where
 
-import H.Fn.Solver (generateSpins, solveHamiltonians, findMinimum, solveClassical, solveQuantum, suggestT)
+import H.EnQ.Ising.Ising (generateSpins, solveHamiltonians, findMinimum, solveClassical, solveQuantum, suggestT)
 
 -- Define the Hamiltonian for the graph partitioning problem
 graphPartitionH :: [(Int, Int)] -> [Int] -> Double

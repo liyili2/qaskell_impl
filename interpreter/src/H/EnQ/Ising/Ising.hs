@@ -1,4 +1,4 @@
-module H.Fn.Solver
+module H.EnQ.Ising.Ising
     ( generateSpins
     , solveHamiltonians
     , findMinimum
@@ -8,13 +8,16 @@ module H.Fn.Solver
     , suggestT
     ) where
 
+import Control.Monad (replicateM)
 import Data.Bits (shiftL, testBit)
 import Data.Complex (Complex(..), magnitude, cis, realPart)
 import Data.List (minimumBy)
 import Data.Ord (comparing)
-import Control.Monad (replicateM)
-import System.Random (randomRIO)
 import qualified Data.Set as Set  -- Import Data.Set
+import Numeric.LinearAlgebra (toList, fromLists)
+import System.Random (randomRIO)
+
+import H.EnQ.AdiabaticEvolution (adiabaticEvolution, scaleComplex, uniformSuperposition)
 
 -- Generate all spin configurations
 generateSpins :: Int -> [[Int]]
@@ -37,35 +40,23 @@ solveClassical hamiltonian spins = do
     let energies = [(hamiltonian s, s) | s <- spins]
     return energies
 
--- Quantum solver with time evolution
+-- Quantum solver with adiabatic evolution
 solveQuantum :: ([Int] -> Double) -> Double -> Int -> [[Int]] -> Int -> IO [(Double, [Int])]
 solveQuantum hamiltonian totalTime shots spins numSteps = do
     let numStates = length spins
 
-    -- Initial Hamiltonian (H_B): Transverse field
-    let hInitial = replicate numStates (0.0 :+ 0.0) ++ repeat ((-1.0) :+ 0.0)
-
-    -- Problem Hamiltonian (H_P): From the given Hamiltonian function
-    let hFinal = map (\s -> hamiltonian s :+ 0) spins
+    -- Convert Hamiltonians to matrices
+    let hInitial = scaleComplex (-1.0) (fromLists $ replicate numStates (replicate numStates (1.0 :+ 0.0)))
+    let hFinal = fromLists $ map (\s -> [hamiltonian s :+ 0]) spins
 
     -- Initial state: Equal superposition
-    let initialState = replicate numStates (1 / sqrt (fromIntegral numStates) :+ 0)
+    let initialState = uniformSuperposition numStates
 
-    -- Time step for evolution
-    let dt = totalTime / fromIntegral numSteps
-
-    -- Time evolution using small steps
-    let evolveStep state t =
-            let s = t / totalTime
-                hT = zipWith (\hi hf -> ((1 :+ 0) - (s :+ 0)) * hi + (s :+ 0) * hf) hInitial hFinal
-                u = [cis (-realPart energy * dt) | energy <- hT]
-            in zipWith (*) u state
-
-    -- Perform evolution over time steps
-    let evolvedState = foldl evolveStep initialState [0, dt .. totalTime]
+    -- Perform adiabatic evolution
+    let finalState = adiabaticEvolution hInitial hFinal totalTime numSteps initialState
 
     -- Compute probabilities of outcomes
-    let probabilities = map (\c -> magnitude c ** 2) evolvedState
+    let probabilities = map magnitude (toList finalState)
     outcomes <- replicateM shots $ weightedChoice probabilities
     let counts = frequency outcomes
 

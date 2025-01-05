@@ -47,6 +47,7 @@ library
       H.EnQ.AdiabaticEvolution
       H.EnQ.Clique
       H.EnQ.ExactCover
+      H.EnQ.Ising.Ising
       H.Imp.Solver
       Lib
   other-modules:

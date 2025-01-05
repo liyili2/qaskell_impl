@@ -1,9 +1,9 @@
-module H.Comp.Cliques
+module H.EnQ.Ising.Cliques
     ( cliquesH
     , testCliquesH
     ) where
 
-import H.Fn.Solver (generateSpins, solveHamiltonians, findMinimum, solveClassical, solveQuantum, suggestT)
+import H.EnQ.Ising.Ising (generateSpins, solveHamiltonians, findMinimum, solveClassical, solveQuantum, suggestT)
 
 -- Define the Hamiltonian for the clique problem
 cliquesH :: [(Int, Int)] -> Int -> [Int] -> Double

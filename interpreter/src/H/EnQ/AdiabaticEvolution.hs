@@ -11,14 +11,14 @@ import Data.List (maximumBy)
 import Data.Ord (comparing)
 
 -- General Adiabatic Evolution: Solves for a single time step
-solveQuantum :: Matrix (Complex Double)      -- Initial Hamiltonian (h0)
+adiabaticStep :: Matrix (Complex Double)      -- Initial Hamiltonian (h0)
              -> Matrix (Complex Double)      -- Final Hamiltonian (hp)
              -> Double                       -- Total evolution time
              -> Int                          -- Total steps
              -> Int                          -- Current step
              -> Vector (Complex Double)      -- Current state
              -> Vector (Complex Double)      -- Next state
-solveQuantum h0 hp t steps step psi =
+adiabaticStep h0 hp t steps step psi =
   let dt = t / fromIntegral steps
       s = fromIntegral step * dt / t
       hT = scaleComplex (1 - s) h0 + scaleComplex s hp  -- Interpolate Hamiltonian
@@ -31,7 +31,7 @@ minimize :: (Int -> Vector (Complex Double) -> Vector (Complex Double)) -- Evolu
          -> Vector (Complex Double)                                    -- Initial state
          -> Vector (Complex Double)                                    -- Final state
 minimize stepEvolution steps psi0 =
-  foldl (\psi step -> stepEvolution step psi) psi0 [0 .. steps - 1]
+  foldl (flip stepEvolution) psi0 [0 .. steps - 1]
 
 -- Composed Adiabatic Evolution
 adiabaticEvolution :: Matrix (Complex Double)      -- Initial Hamiltonian (h0)
@@ -40,8 +40,7 @@ adiabaticEvolution :: Matrix (Complex Double)      -- Initial Hamiltonian (h0)
                    -> Int                          -- Number of steps
                    -> Vector (Complex Double)      -- Initial state
                    -> Vector (Complex Double)      -- Final state
-adiabaticEvolution h0 hp t steps psi0 =
-  minimize (solveQuantum h0 hp t steps) steps psi0
+adiabaticEvolution h0 hp t steps = minimize (adiabaticStep h0 hp t steps) steps
 
 -- Scale a complex matrix
 scaleComplex :: Double -> Matrix (Complex Double) -> Matrix (Complex Double)
