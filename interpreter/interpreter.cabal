@@ -40,15 +40,13 @@ library
       Eval2
       Eval3
       Example
-      H.Comp.Cliques
-      H.Comp.GraphPartition
-      H.Comp.NumberPartition
-      H.Comp.Solver
       H.EnQ.AdiabaticEvolution
       H.EnQ.Clique
       H.EnQ.ExactCover
+      H.EnQ.Ising.Cliques
+      H.EnQ.Ising.GraphPartition
       H.EnQ.Ising.Ising
-      H.Imp.Solver
+      H.EnQ.Ising.NumberPartition
       Lib
   other-modules:
       Paths_interpreter
