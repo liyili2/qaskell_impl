@@ -44,9 +44,9 @@ library
       H.Comp.GraphPartition
       H.Comp.NumberPartition
       H.Comp.Solver
+      H.EnQ.AdiabaticEvolution
       H.EnQ.Clique
       H.EnQ.ExactCover
-      H.EnQ.GenerateRandomClauses
       H.Imp.Solver
       Lib
   other-modules:

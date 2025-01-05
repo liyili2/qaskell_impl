@@ -1,14 +1,12 @@
 module H.EnQ.Clique where
 
-import Numeric.LinearAlgebra (Matrix, Vector, atIndex, (#>), (><), fromLists, toLists, ident, cmap, sumElements, diagl, tr, expm, rows, cols)
+import Numeric.LinearAlgebra (Matrix, Vector, atIndex, (#>), (><), fromLists, toLists, ident, cmap, diagl, tr, rows)
 import Numeric.LinearAlgebra.Data (fromList, scalar, toList)
-import Data.List (subsequences)
 import Data.Complex (Complex((:+)), magnitude)
 import Control.Monad (replicateM)
 import System.Random (randomRIO)
-import Numeric (showIntAtBase)
-import Data.Char (intToDigit)
 import qualified Data.Set as Set
+import H.EnQ.AdiabaticEvolution (adiabaticEvolution, maxIndex)
 
 -- Generate a random graph with n vertices
 generateRandomGraph :: Int -> IO (Matrix Double)
@@ -20,74 +18,7 @@ generateRandomGraph n = do
         symmetrized = upperTriangular + tr upperTriangular
     return $ cmap (\x -> if x > 0 then 1 else 0) symmetrized
 
--- Construct the initial Hamiltonian H_B
-initialHamiltonian :: Int -> Int -> Matrix Double
-initialHamiltonian n k = fromLists $ map row [0 .. dim - 1]
-  where
-    dim = 2 ^ n
-    row i = [if valid i j then -1 else 0 | j <- [0 .. dim - 1]]
-    valid i j = hammingWeight (toBinary n i) == k && hammingWeight (toBinary n j) == k && i /= j
-    hammingWeight = length . filter (== 1)
-
--- Construct the problem Hamiltonian H_P
-problemHamiltonian :: Matrix Double -> Int -> Matrix Double
-problemHamiltonian graph k = fromLists $ map row [0 .. dim - 1]
-  where
-    n = rows graph
-    dim = 2 ^ n
-    row i = [if i == j then penalty i else 0 | j <- [0 .. dim - 1]]
-    penalty i = let binary = toBinary n i
-                in if hammingWeight binary == k
-                   then sum [1 | (u, v) <- pairs n, binary !! u == 1, binary !! v == 1, graph `atIndex` (u, v) == 0]
-                   else 1
-    hammingWeight = length . filter (== 1)
-    pairs n = [(u, v) | u <- [0 .. n - 1], v <- [u + 1 .. n - 1]]
-
--- Prepare the initial state
-prepareInitialState :: Int -> Int -> Vector (Complex Double)
-prepareInitialState n k = fromList $ map normalize [0 .. dim - 1]
-  where
-    dim = 2 ^ n
-    states = [if hammingWeight (toBinary n i) == k then 1 :+ 0 else 0 :+ 0 | i <- [0 .. dim - 1]]
-    norm = sqrt $ sum [magnitude x ^ 2 | x <- states]
-    normalize i = states !! i / (norm :+ 0)
-    hammingWeight = length . filter (== 1)
-
--- Simulate adiabatic evolution
-adiabaticEvolution :: Matrix Double -> Matrix Double -> Double -> Int -> Vector (Complex Double) -> Vector (Complex Double)
-adiabaticEvolution hB hP t steps psi0 = foldl evolve psi0 [0 .. steps - 1]
-  where
-    dt = t / fromIntegral steps
-    evolve psi step = let s = fromIntegral step * dt / t
-                          hT = cmap (*(1 - s)) hB + cmap (*s) hP
-                          uT = expm (cmap (\x -> x :+ 0) hT * scalar (0 :+ (-dt)))
-                      in uT #> psi
-
--- Find the index of the maximum magnitude element in a vector
-maxIndex :: Vector (Complex Double) -> Int
-maxIndex vec = snd $ maximum [(magnitude x, i) | (x, i) <- zip (toList vec) [0..]]
-
--- Convert an integer to binary representation
-toBinary :: Int -> Int -> [Int]
-toBinary n x = reverse $ take n $ reverse (toBinary' x) ++ repeat 0
-  where
-    toBinary' 0 = []
-    toBinary' y = let (q, r) = y `divMod` 2 in r : toBinary' q
-
--- Check if a set of vertices forms a clique
-isClique :: Matrix Double -> [Int] -> Bool
-isClique graph vertices = all (\(u, v) -> graph `atIndex` (u, v) == 1) [(u, v) | u <- vertices, v <- vertices, u /= v]
-
--- Find all largest cliques
--- findAllLargestCliques :: Matrix Double -> [[Int]]
--- findAllLargestCliques graph = foldl findCliques [] [1 .. n]
---   where
---     n = rows graph
---     findCliques acc size = let cliques = filter (isClique graph) (combinations size [0 .. n - 1])
---                                maxSize = if null acc then 0 else length (head acc)
---                            in if null cliques then acc else if length (head cliques) > maxSize then cliques else acc
-
--- Generate choices (combinations of a specific size)
+-- Generate combinations of a specific size
 generateChoices :: Int -> [a] -> [[a]]
 generateChoices 0 _ = [[]]
 generateChoices _ [] = []
@@ -102,11 +33,49 @@ minimize :: [[Int]] -> [[Int]]
 minimize cliques = let maxSize = maximum (map length cliques)
                    in filter ((== maxSize) . length) cliques
 
--- Generate combinations of a specific size
-combinations :: Int -> [a] -> [[a]]
-combinations 0 _ = [[]]
-combinations _ [] = []
-combinations k (x:xs) = map (x :) (combinations (k - 1) xs) ++ combinations k xs
+-- Construct the initial Hamiltonian H_B
+initialHamiltonian :: Int -> Int -> Matrix (Complex Double)
+initialHamiltonian n k = fromLists $ map row [0 .. dim - 1]
+  where
+    dim = 2 ^ n
+    row i = [if valid i j then (-1) :+ 0 else 0 :+ 0 | j <- [0 .. dim - 1]]
+    valid i j = hammingWeight (toBinary n i) == k && hammingWeight (toBinary n j) == k && i /= j
+    hammingWeight = length . filter (== 1)
+
+-- Construct the problem Hamiltonian H_P
+problemHamiltonian :: Matrix Double -> Int -> Matrix (Complex Double)
+problemHamiltonian graph k = fromLists $ map row [0 .. dim - 1]
+  where
+    n = rows graph
+    dim = 2 ^ n
+    row i = [if i == j then penalty i else 0 :+ 0 | j <- [0 .. dim - 1]]
+    penalty i = let binary = toBinary n i
+                in if hammingWeight binary == k
+                   then fromIntegral (sum [1 | (u, v) <- pairs n, binary !! u == 1, binary !! v == 1, graph `atIndex` (u, v) == 0]) :+ 0
+                   else 1 :+ 0
+    hammingWeight = length . filter (== 1)
+    pairs n = [(u, v) | u <- [0 .. n - 1], v <- [u + 1 .. n - 1]]
+
+-- Prepare the initial state
+prepareInitialState :: Int -> Int -> Vector (Complex Double)
+prepareInitialState n k = fromList $ map normalize [0 .. dim - 1]
+  where
+    dim = 2 ^ n
+    states = [if hammingWeight (toBinary n i) == k then 1 :+ 0 else 0 :+ 0 | i <- [0 .. dim - 1]]
+    norm = sqrt $ sum [magnitude x ^ 2 | x <- states]
+    normalize i = states !! i / (norm :+ 0)
+    hammingWeight = length . filter (== 1)
+
+-- Convert an integer to binary representation
+toBinary :: Int -> Int -> [Int]
+toBinary n x = reverse $ take n $ reverse (toBinary' x) ++ repeat 0
+  where
+    toBinary' 0 = []
+    toBinary' y = let (q, r) = y `divMod` 2 in r : toBinary' q
+
+-- Check if a set of vertices forms a clique
+isClique :: Matrix Double -> [Int] -> Bool
+isClique graph vertices = all (\(u, v) -> graph `atIndex` (u, v) == 1) [(u, v) | u <- vertices, v <- vertices, u /= v]
 
 -- Solve the clique problem
 solveClique :: IO ()
@@ -122,7 +91,6 @@ solveClique = do
     putStrLn "Adjacency Matrix:"
     print graph
 
-    -- let largestCliques = findAllLargestCliques graph
     let choices = concatMap (\size -> generateChoices size [0 .. n - 1]) [1 .. n]
         classicalCliques = solveClassical graph choices
         largestCliques = minimize classicalCliques
