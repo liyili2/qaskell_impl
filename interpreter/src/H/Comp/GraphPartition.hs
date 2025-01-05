@@ -1,4 +1,4 @@
-module H.Fn.GraphPartition
+module H.Comp.GraphPartition
     ( graphPartitionH
     , testGraphPartitionH
     ) where

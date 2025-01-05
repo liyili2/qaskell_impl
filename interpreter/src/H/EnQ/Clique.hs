@@ -21,8 +21,8 @@ generateRandomGraph n = do
     return $ cmap (\x -> if x > 0 then 1 else 0) symmetrized
 
 -- Construct the initial Hamiltonian H_B
-constructInitialHamiltonian :: Int -> Int -> Matrix Double
-constructInitialHamiltonian n k = fromLists $ map row [0 .. dim - 1]
+initialHamiltonian :: Int -> Int -> Matrix Double
+initialHamiltonian n k = fromLists $ map row [0 .. dim - 1]
   where
     dim = 2 ^ n
     row i = [if valid i j then -1 else 0 | j <- [0 .. dim - 1]]
@@ -30,8 +30,8 @@ constructInitialHamiltonian n k = fromLists $ map row [0 .. dim - 1]
     hammingWeight = length . filter (== 1)
 
 -- Construct the problem Hamiltonian H_P
-constructProblemHamiltonian :: Matrix Double -> Int -> Matrix Double
-constructProblemHamiltonian graph k = fromLists $ map row [0 .. dim - 1]
+problemHamiltonian :: Matrix Double -> Int -> Matrix Double
+problemHamiltonian graph k = fromLists $ map row [0 .. dim - 1]
   where
     n = rows graph
     dim = 2 ^ n
@@ -54,8 +54,8 @@ prepareInitialState n k = fromList $ map normalize [0 .. dim - 1]
     hammingWeight = length . filter (== 1)
 
 -- Simulate adiabatic evolution
-simulateAdiabaticEvolution :: Matrix Double -> Matrix Double -> Double -> Int -> Vector (Complex Double) -> Vector (Complex Double)
-simulateAdiabaticEvolution hB hP t steps psi0 = foldl evolve psi0 [0 .. steps - 1]
+adiabaticEvolution :: Matrix Double -> Matrix Double -> Double -> Int -> Vector (Complex Double) -> Vector (Complex Double)
+adiabaticEvolution hB hP t steps psi0 = foldl evolve psi0 [0 .. steps - 1]
   where
     dt = t / fromIntegral steps
     evolve psi step = let s = fromIntegral step * dt / t
@@ -64,8 +64,8 @@ simulateAdiabaticEvolution hB hP t steps psi0 = foldl evolve psi0 [0 .. steps - 
                       in uT #> psi
 
 -- Find the index of the maximum magnitude element in a vector
-maxIndexByMagnitude :: Vector (Complex Double) -> Int
-maxIndexByMagnitude vec = snd $ maximum [(magnitude x, i) | (x, i) <- zip (toList vec) [0..]]
+maxIndex :: Vector (Complex Double) -> Int
+maxIndex vec = snd $ maximum [(magnitude x, i) | (x, i) <- zip (toList vec) [0..]]
 
 -- Convert an integer to binary representation
 toBinary :: Int -> Int -> [Int]
@@ -133,11 +133,11 @@ solveClique = do
             then do
                 putStrLn $ "\nTrying k = " ++ show k
 
-                let hB = constructInitialHamiltonian n k
-                    hP = constructProblemHamiltonian graph k
+                let hB = initialHamiltonian n k
+                    hP = problemHamiltonian graph k
                     initialState = prepareInitialState n k
-                    finalState = simulateAdiabaticEvolution hB hP t steps initialState
-                    maxAmplitudeIndex = maxIndexByMagnitude finalState
+                    finalState = adiabaticEvolution hB hP t steps initialState
+                    maxAmplitudeIndex = maxIndex finalState
                     binaryRepresentation = toBinary n maxAmplitudeIndex
                     cliqueVertices = [i | (i, bit) <- zip [0..] binaryRepresentation, bit == 1]
 

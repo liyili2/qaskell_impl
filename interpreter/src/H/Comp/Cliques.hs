@@ -1,4 +1,4 @@
-module H.Fn.Cliques
+module H.Comp.Cliques
     ( cliquesH
     , testCliquesH
     ) where

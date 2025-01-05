@@ -40,13 +40,14 @@ library
       Eval2
       Eval3
       Example
-      H.Fn.Cliques
-      H.Fn.GraphPartition
-      H.Fn.NumberPartition
-      H.Fn.Solver
+      H.Comp.Cliques
+      H.Comp.GraphPartition
+      H.Comp.NumberPartition
+      H.Comp.Solver
+      H.EnQ.Clique
+      H.EnQ.ExactCover
+      H.EnQ.GenerateRandomClauses
       H.Imp.Solver
-      H.Trav.Clique
-      H.Trav.Solver
       Lib
   other-modules:
       Paths_interpreter
