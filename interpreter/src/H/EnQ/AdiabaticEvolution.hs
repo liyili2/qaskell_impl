@@ -59,6 +59,12 @@ maxIndex vec = fst $ maximumBy (comparing snd) (zip [0 ..] magnitudes)
 -- Define the translation from second quantization to matrix
 data SndQ = Crea | Anni | Suma SndQ SndQ | Circ SndQ SndQ
 
+--data Spin x = KeepPos x | KeepNeg x | Swap [x].
+-- trans (KeepPos x) = Circ Crea Anni
+-- trans (KeepNeg x) = Circ Anni Crea
+-- trans (Swap 1) = Suma Crea Anni
+-- trans (Swap 2) x y = Suma (Circ Crea(x) Anni(y)) (Circ Anni(y) Crea(x)) -- need to define matrix for two qubits.
+
 instance Functor Matrix where
     fmap f = Matrix . (fmap (fmap f)) . getMatrix 
 
