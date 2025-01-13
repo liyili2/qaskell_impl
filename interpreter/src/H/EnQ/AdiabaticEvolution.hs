@@ -7,6 +7,7 @@ module H.EnQ.AdiabaticEvolution (
 
 import Data.Complex (Complex((:+)), magnitude)
 import Numeric.LinearAlgebra (Vector, Matrix, expm, cmap, konst, (#>), scalar, toList)
+import Numeric.LinearAlgebra.Data
 import Data.List (maximumBy)
 import Data.Ord (comparing)
 
@@ -65,15 +66,15 @@ data SndQ = Crea | Anni | Suma SndQ SndQ | Circ SndQ SndQ
 -- trans (Swap 1) = Suma Crea Anni
 -- trans (Swap 2) x y = Suma (Circ Crea(x) Anni(y)) (Circ Anni(y) Crea(x)) -- need to define matrix for two qubits.
 
-instance Functor Matrix where
-    fmap f = Matrix . (fmap (fmap f)) . getMatrix 
+-- instance Functor Matrix where
+--     fmap f = Matrix . (fmap (fmap f)) . getMatrix 
 
-instance Applicative Matrix where
-    pure x = Matrix [[x]]
-    (Matrix as) <*> (Matrix bs) = Matrix $ zipWith (zipWith id) as bs
+-- instance Applicative Matrix where
+--     pure x = Matrix [[x]]
+--     (Matrix as) <*> (Matrix bs) = Matrix $ zipWith (zipWith id) as bs
 
-instance (Show a) => Show (Matrix a) where 
-    show = (intercalate "\n") . fmap (unwords . fmap show) . getMatrix
+-- instance (Show a) => Show (Matrix a) where 
+--     show = (intercalate "\n") . fmap (unwords . fmap show) . getMatrix
 
 --scalarProduct :: (Num a) => a -> Matrix a -> Matrix a
 --scalarProduct scalar matrix = (* scalar) <$> matrix
@@ -101,7 +102,7 @@ genOp (Circ a b) = multStd (genOp a) (genOp b)
 
 genSingleAux f n m 0 = []
 genSingleAux f n m m = kroneckerProduct (genOp f) (genSingleAux n m (m-1))
-genSingleAux f n m j = kroneckerProduct (identity 2) (genSingleAux n m (j-1))
+genSingleAux f n m j = kroneckerProduct (ident 2) (genSingleAux n m (j-1))
 
 genMatrix f n 0 = zero n n
 genMatrix f n m =genMatrix f n (m-1) + genSingle f n m
