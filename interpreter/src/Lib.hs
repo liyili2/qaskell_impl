@@ -11,6 +11,14 @@ import Data.Foldable
 
 import Data.Complex
 
+type Bit = Bool
+
+zeroBit :: Bit
+zeroBit = False
+
+oneBit :: Bit
+oneBit = True
+
 -- TODO: Probability amplitudes
 newtype Choice a = Choice [a]
   deriving (Show, Semigroup, Monoid, Functor, Applicative, Monad, Alternative)

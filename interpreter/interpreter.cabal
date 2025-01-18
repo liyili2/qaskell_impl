@@ -36,6 +36,7 @@ library
       DSL.Super.Simulated
       DSL.Tensor
       DSL.Utils
+      LowLevel
       Eval
       Eval2
       Eval3
